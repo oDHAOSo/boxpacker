@@ -75,7 +75,8 @@ Before handing work to another agent:
   isolated adapters for both exact-version dependency candidates, and the
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
-- Completed in this handoff: every task from `M2.5` through `M3.6`.
+- Completed in this handoff: every task from `M2.5` through `M3.6`, plus
+  `M4.1`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -176,6 +177,27 @@ Before handing work to another agent:
   - M3's exit criterion is met: effort is monotonic, input reversal preserves
     objective quality, fixed settings reproduce results, and the 8/77 deadline
     test remains bounded.
+  - The application composition layer now reads and deserializes the legacy
+    input document, performs exact input validation, runs the selected
+    portfolio, and independently validates the returned solution before any
+    output is produced.
+  - Fast, balanced, and thorough presets map to fixed monotonic construction
+    work budgets of 1, 8, and 14 units and default monotonic deadlines of 1,
+    10, and 30 seconds. `--time-limit` overrides only the deadline; seed and
+    bounded thread controls flow unchanged into `SolveRequest`.
+  - Stable IDs now map exact domain placements back to the legacy container,
+    nested `placed_items`, coordinate, color, and `unplaced_items` fields.
+    Container and unplaced-item order follows input IDs, placement ordering and
+    colors are deterministic, and scaled integers convert back exactly at the
+    single compatibility boundary.
+  - The CLI now writes pretty compatible JSON and a sibling safe HTML report,
+    reports a successful placed-item summary, and exits nonzero with a
+    stage-specific error on failure. It rejects an output extension that would
+    make the JSON and HTML paths identical before touching either file.
+  - The current fixture end-to-end test runs the real fast portfolio, asserts
+    53 / 57 placed and 587,815.524 packed volume, re-adapts the emitted JSON to
+    exact stable-ID geometry, independently validates it, and proves that the
+    report embeds the same output document.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -247,6 +269,16 @@ Before handing work to another agent:
   - `devenv shell -- cargo test --test progress` reported 2 passing tests,
     including normalized progress/non-time metric reproducibility;
   - the M3.6 strict Clippy run and release build passed;
+  - after M4.1,
+    `devenv shell -- cargo test --all-targets --all-features` reported 72
+    passing tests (16 unit and 56 integration), with no failures;
+  - `devenv shell -- cargo test --test pipeline` reported 2 passing
+    end-to-end artifact and output-path-collision tests;
+  - the initial M4.1 format check reported only rustfmt layout differences;
+    `devenv shell -- cargo fmt` applied them and the subsequent format gate
+    passed;
+  - the M4.1 strict Clippy run, release build, and final host-authorized
+    `devenv test` gate passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -274,6 +306,7 @@ Before handing work to another agent:
   devenv shell -- cargo test --test bakeoff_fixtures
   devenv shell -- cargo test --test bakeoff_evaluation
   devenv shell -- cargo test --test portfolio
+  devenv shell -- cargo test --test pipeline
   devenv shell -- cargo test --all-targets --all-features
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
   devenv shell -- cargo bench --bench current_fixture -- --noplot
@@ -308,17 +341,20 @@ Before handing work to another agent:
   `src/solver/portfolio.rs`, and `tests/progress.rs`.
 - Changed files in M3.6: `README.md`, `REWRITE_PLAN.md`, `src/solver/mod.rs`,
   `src/solver/portfolio.rs`, `tests/portfolio.rs`, and `tests/progress.rs`.
+- Changed files in M4.1: `README.md`, `REWRITE_PLAN.md`, `src/app.rs`,
+  `src/compatibility.rs`, `src/lib.rs`, `src/main.rs`, and
+  `tests/pipeline.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
 - Decision register changes: D-005 is now `LOCKED`.
-- Remaining blockers: none for `M4.1`. Automated dual-platform CI remains
+- Remaining blockers: none for `M4.2`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M4.1`, connect the selected portfolio, effort presets,
-  deadline, seed, and thread controls to compatible JSON and HTML output while
-  keeping compatibility mapping and report generation outside solver modules.
+- Exact next task: `M4.2`, add malformed-input diagnostics and safe
+  report-serialization failure handling without weakening the compatibility
+  schema or moving I/O concerns into solver modules.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -628,7 +664,7 @@ permutations preserve objective quality, and deadline behavior is bounded.
 
 ### M4 — integration and hardening (`IN PROGRESS`)
 
-- [ ] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
+- [x] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
 - [ ] `M4.2` Add malformed-input diagnostics and safe report serialization.
 - [ ] `M4.3` Complete property tests, fuzz targets, and release benchmarks.
 - [ ] `M4.4` Add dual-platform CI for ARM64 macOS and x86-64 Linux.

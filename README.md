@@ -47,7 +47,13 @@ repair, and final aggregate-metric events without importing CLI or report
 types. M3's exit proofs cover monotonic objective quality across fixed effort
 levels, input-order reversal, solution and non-time metric reproducibility, and
 normalized concurrent progress. Connecting the selected portfolio to
-compatible JSON and HTML output is next.
+compatible output is now complete: the CLI reads and validates the legacy
+input, runs the selected portfolio, independently validates its incumbent, and
+writes both the legacy JSON shape and the safe HTML report. Fast, balanced, and
+thorough currently use fixed monotonic work budgets of 1, 8, and 14 units with
+default time limits of 1, 10, and 30 seconds; `--time-limit` overrides only the
+deadline. Malformed-input diagnostics and further report-serialization
+hardening are next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

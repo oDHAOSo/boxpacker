@@ -10,10 +10,15 @@ use std::fmt;
 
 use crate::geometry::{
     Aabb, Coordinate, CoordinateConversionError, Dimensions, Length, LengthConversionError, Point,
+    SCALE,
 };
-use crate::model::OutputData;
+use crate::model::{Cuboid, Item, OutputContainer, OutputData, PlacedItem};
 use crate::solution::{Placement, Solution};
 use crate::validate::{ContainerId, ItemId, PackingInstance};
+
+const ITEM_COLORS: [&str; 8] = [
+    "#ff4d4d", "#4d79ff", "#4dff4d", "#ffdb4d", "#9933ff", "#ff8c1a", "#4dffff", "#ff4dff",
+];
 
 /// A saved compatibility output paired with stable input identities.
 #[derive(Clone, Debug, PartialEq)]
@@ -201,6 +206,90 @@ pub fn adapt_saved_solution(
         containers,
         unplaced_items,
     })
+}
+
+/// Map an independently validated domain solution to the legacy output shape.
+///
+/// Stable IDs select names and original dimensions. Placements and unplaced
+/// items are sorted by those IDs so serialization is reproducible regardless
+/// of backend construction order.
+#[must_use]
+pub fn output_from_solution(instance: &PackingInstance, solution: &Solution) -> OutputData {
+    let mut placements = solution.placements().to_vec();
+    placements.sort_unstable_by_key(|placement| {
+        (
+            placement.container_id(),
+            placement.item_id(),
+            placement.bounds().origin().z().get(),
+            placement.bounds().origin().y().get(),
+            placement.bounds().origin().x().get(),
+        )
+    });
+
+    let containers = instance
+        .containers()
+        .iter()
+        .map(|container| {
+            let dimensions = container.dimensions();
+            let placed_items = placements
+                .iter()
+                .copied()
+                .filter(|placement| placement.container_id() == container.id())
+                .map(|placement| {
+                    let item = &instance.items()[placement.item_id().index()];
+                    let bounds = placement.bounds();
+                    let origin = bounds.origin();
+                    let dimensions = bounds.dimensions();
+                    PlacedItem {
+                        name: item.name().to_owned(),
+                        coords: Cuboid {
+                            x: to_input_units(origin.x().get()),
+                            y: to_input_units(origin.y().get()),
+                            z: to_input_units(origin.z().get()),
+                            w: to_input_units(dimensions.width().get()),
+                            l: to_input_units(dimensions.length().get()),
+                            h: to_input_units(dimensions.height().get()),
+                        },
+                        color: ITEM_COLORS[placement.item_id().index() % ITEM_COLORS.len()]
+                            .to_owned(),
+                    }
+                })
+                .collect();
+
+            OutputContainer {
+                name: container.name().to_owned(),
+                width: to_input_units(dimensions.width().get()),
+                length: to_input_units(dimensions.length().get()),
+                height: to_input_units(dimensions.height().get()),
+                placed_items,
+            }
+        })
+        .collect();
+
+    let mut unplaced_item_ids = solution.unplaced_items().to_vec();
+    unplaced_item_ids.sort_unstable();
+    let unplaced_items = unplaced_item_ids
+        .into_iter()
+        .map(|item_id| {
+            let item = &instance.items()[item_id.index()];
+            let dimensions = item.dimensions();
+            Item {
+                name: item.name().to_owned(),
+                width: to_input_units(dimensions.width().get()),
+                length: to_input_units(dimensions.length().get()),
+                height: to_input_units(dimensions.height().get()),
+            }
+        })
+        .collect();
+
+    OutputData {
+        containers,
+        unplaced_items,
+    }
+}
+
+fn to_input_units(scaled: u64) -> f64 {
+    scaled as f64 / SCALE as f64
 }
 
 fn find_container(
