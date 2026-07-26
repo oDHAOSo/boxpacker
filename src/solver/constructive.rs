@@ -23,61 +23,107 @@ impl SolverBackend for ConstructiveBackend {
         instance: &PackingInstance,
         request: &SolveRequest,
     ) -> Result<SolverOutcome, SolverError> {
-        let started_at = Instant::now();
-        let mut states = instance
-            .containers()
-            .iter()
-            .map(|container| ContainerState::new(container.id(), container.dimensions()))
-            .collect::<Vec<_>>();
-        let mut item_ids = instance
-            .items()
-            .iter()
-            .map(|item| item.id())
-            .collect::<Vec<_>>();
-        item_ids.sort_unstable_by(|left, right| compare_items(instance, *left, *right));
+        solve_with_item_order(instance, request, ItemOrder::Canonical)
+    }
+}
 
-        let mut explored_candidates = 0_u64;
-        let mut placements = Vec::new();
-        let mut unplaced_items = Vec::new();
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum ItemOrder {
+    Canonical,
+    Seeded(u64),
+}
 
-        for (position, item_id) in item_ids.iter().copied().enumerate() {
-            if request.deadline().is_expired() {
-                unplaced_items.extend(item_ids[position..].iter().copied());
-                break;
-            }
+pub(super) fn solve_with_item_order(
+    instance: &PackingInstance,
+    request: &SolveRequest,
+    item_order: ItemOrder,
+) -> Result<SolverOutcome, SolverError> {
+    let started_at = Instant::now();
+    let mut states = instance
+        .containers()
+        .iter()
+        .map(|container| ContainerState::new(container.id(), container.dimensions()))
+        .collect::<Vec<_>>();
+    let mut item_ids = instance
+        .items()
+        .iter()
+        .map(|item| item.id())
+        .collect::<Vec<_>>();
+    item_ids.sort_unstable_by(|left, right| compare_items(instance, *left, *right));
+    if let ItemOrder::Seeded(seed) = item_order {
+        seeded_shuffle(&mut item_ids, seed);
+    }
 
-            let dimensions = instance.items()[item_id.index()].dimensions();
-            let candidate = find_best_candidate(
-                instance,
-                &states,
-                item_id,
-                dimensions,
-                &mut explored_candidates,
-                request,
-            )?;
-            if let Some(candidate) = candidate {
-                let placement = Placement::new(candidate.container_id, item_id, candidate.bounds);
-                states[candidate.container_id.index()].place(placement)?;
-                placements.push(placement);
-            } else {
-                unplaced_items.push(item_id);
-            }
+    let mut explored_candidates = 0_u64;
+    let mut placements = Vec::new();
+    let mut unplaced_items = Vec::new();
+
+    for (position, item_id) in item_ids.iter().copied().enumerate() {
+        if request.deadline().is_expired() {
+            unplaced_items.extend(item_ids[position..].iter().copied());
+            break;
         }
 
-        let improvement_count = u64::try_from(placements.len())
-            .map_err(|_| SolverError::new("placement count does not fit solver metrics"))?;
-        let solution = Solution::new(placements, unplaced_items);
-        validate_solution(instance, &solution).map_err(|errors| {
-            SolverError::new(format!(
-                "constructive backend produced an invalid candidate:\n{errors}"
-            ))
-        })?;
-        let elapsed = started_at.elapsed();
-        Ok(SolverOutcome::new(
-            solution,
-            SolverMetrics::new(explored_candidates, 1, improvement_count, elapsed),
-            OptimalityStatus::Heuristic,
+        let dimensions = instance.items()[item_id.index()].dimensions();
+        let candidate = find_best_candidate(
+            instance,
+            &states,
+            item_id,
+            dimensions,
+            &mut explored_candidates,
+            request,
+        )?;
+        if let Some(candidate) = candidate {
+            let placement = Placement::new(candidate.container_id, item_id, candidate.bounds);
+            states[candidate.container_id.index()].place(placement)?;
+            placements.push(placement);
+        } else {
+            unplaced_items.push(item_id);
+        }
+    }
+
+    let improvement_count = u64::try_from(placements.len())
+        .map_err(|_| SolverError::new("placement count does not fit solver metrics"))?;
+    let solution = Solution::new(placements, unplaced_items);
+    validate_solution(instance, &solution).map_err(|errors| {
+        SolverError::new(format!(
+            "constructive backend produced an invalid candidate:\n{errors}"
         ))
+    })?;
+    let elapsed = started_at.elapsed();
+    Ok(SolverOutcome::new(
+        solution,
+        SolverMetrics::new(explored_candidates, 1, improvement_count, elapsed),
+        OptimalityStatus::Heuristic,
+    ))
+}
+
+fn seeded_shuffle<T>(values: &mut [T], seed: u64) {
+    let mut generator = SplitMix64::new(seed);
+    for upper in (1..values.len()).rev() {
+        let range = u64::try_from(upper + 1).expect("slice length must fit u64");
+        let selected = usize::try_from(generator.next() % range)
+            .expect("selected shuffle index must fit usize");
+        values.swap(upper, selected);
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct SplitMix64 {
+    state: u64,
+}
+
+impl SplitMix64 {
+    const fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
+
+    fn next(&mut self) -> u64 {
+        self.state = self.state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut value = self.state;
+        value = (value ^ (value >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        value = (value ^ (value >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        value ^ (value >> 31)
     }
 }
 

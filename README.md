@@ -27,7 +27,9 @@ deadline behavior, portability, dependency cost, maintenance, and licensing in
 [`docs/bakeoff/M2.5.md`](docs/bakeoff/M2.5.md); the accepted selection and
 candidate rejections are in
 [`docs/decisions/0001-solver-backend.md`](docs/decisions/0001-solver-backend.md).
-M3's deterministic portfolio and anytime improvement engine are next.
+M3 now has deterministic seeded portfolio work partitioning whose stable
+reduction retains the canonical constructor as a quality floor across thread
+counts. Deadline cancellation and a validated shared incumbent are next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

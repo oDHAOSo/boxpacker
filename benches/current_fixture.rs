@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use boxpacker::model::InputData;
 use boxpacker::solver::constructive::ConstructiveBackend;
+use boxpacker::solver::portfolio::PortfolioBackend;
 use boxpacker::solver::{SolveRequest, SolverBackend};
 use boxpacker::validate::PackingInstance;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
@@ -17,14 +18,17 @@ fn instance(json: &str) -> PackingInstance {
 }
 
 fn backends() -> Vec<Box<dyn SolverBackend>> {
-    vec![Box::new(ConstructiveBackend)]
+    vec![
+        Box::new(ConstructiveBackend),
+        Box::new(PortfolioBackend::default()),
+    ]
 }
 
 fn request() -> SolveRequest {
     SolveRequest::new(
         Duration::from_secs(30),
         23,
-        NonZeroUsize::new(1).expect("one is non-zero"),
+        NonZeroUsize::new(4).expect("four is non-zero"),
     )
 }
 
