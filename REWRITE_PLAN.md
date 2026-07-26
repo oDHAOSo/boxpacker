@@ -6,7 +6,9 @@ adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
 are implemented; the event-based constructive baseline is independently valid
 and improves the saved fixture, both candidate libraries are isolated behind
-the backend boundary, and the broader bake-off fixtures are next.
+the backend boundary, and the full correctness/quality fixture matrix is
+recorded. Runtime, determinism, portability, maintenance, and licensing
+evaluation are next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -62,54 +64,44 @@ Before handing work to another agent:
   independent from the old reference repository. Its parent is not a Git
   repository.
 - Completed before this handoff: `M0`, all of `M1`, and `M2.1` through
-  `M2.2`. The compatibility shell, exact independent validator, backend
-  contract, provisional objective, and clean-room constructive baseline are
-  present. No old solver or scoring code was copied.
-- Completed in this handoff: `M2.3`.
-  - Exact evaluation versions `bin-packing = 0.3.0` and
-    `u-nesting-d3 = 0.6.0` are locked. Default parallel features are disabled,
-    keeping thread behavior bounded and the dependency experiment portable.
-    This is an evaluation pin, not a D-005 selection.
-  - `BinPackingBackend` maps heterogeneous one-use container inventory and
-    stable item IDs into the dependency's integer multi-bin model, translates
-    its vertical/depth axes back to BoxPacker axes, preclassifies individually
-    infeasible items, and reports the dependency's 32,768-unit axis cap without
-    truncation. Dependency types do not cross the adapter.
-  - `UNestingBackend` compensates for the dependency's single-boundary API by
-    visiting each heterogeneous container once in deterministic order and
-    solving only remaining stable item instances. It passes scaled integers as
-    exactly representable `f64`, accepts only integral returned coordinates,
-    applies the dependency's orientation index locally, and independently
-    validates the combined result.
-  - Only deterministic `u-nesting-d3` strategies are exposed because its
-    randomized strategies have no seed in the shared 0.6 configuration.
-    Sequential per-container assignment and absent explored-state metrics are
-    recorded model-fit limitations for `M2.5`.
-  - `bin-packing` has native heterogeneous inventory and seed support but no
-    deadline option. Its adapter exposes contact-point, basic extreme-point,
-    and auto strategies without leaking dependency enums.
-  - Both adapters pass heterogeneous inventory, rotation, no-fit, stable-ID,
-    and exact independent validation tests. On the current fixture,
-    `bin-packing` contact-point places 41 items / 535,042.896 volume and
-    sequential `u-nesting-d3` extreme-point places 49 / 568,460.714; both trail
-    the clean-room 53 / 587,815.524 result, so neither candidate is selected.
+  `M2.3`. The compatibility shell, exact validator, clean-room baseline, and
+  isolated adapters for both exact-version dependency candidates are present.
+  No old solver or scoring code was copied and no dependency is selected.
+- Completed in this handoff: `M2.4`.
+  - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
+    document with eight heterogeneous containers, 77 uniquely named items,
+    724,566.920 item volume, and 882,287.290 capacity. Its README records its
+    deterministic eleven-profile/seven-repeat construction.
+  - A small known-answer fixture fills one container with four items for every
+    backend. An adversarial 5×5×1 case proves that volume slack alone cannot fit
+    two 3×4×1 items; every backend correctly places one.
+  - The current fixture and a complete reversal of both input arrays produce
+    independently valid, identical `ObjectiveValue`s for all three backends.
+    Recorded current results remain clean-room 53 / 587,815.524,
+    `bin-packing` 41 / 535,042.896, and `u-nesting-d3` 49 / 568,460.714.
+  - The 8/77 fixture records exact objective components:
+    clean-room `(73, 694,614.920, 8 used, 199.220 unsupported,
+    836,936.280 bounding)`, `bin-packing`
+    `(70, 687,975.920, 8, 362.560, 807,771.800)`, and `u-nesting-d3`
+    `(73, 694,614.920, 8, 282.900, 830,038.000)`.
+  - Every recorded candidate passes the independent exact validator before its
+    metrics are asserted.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
     and the debug build;
-  - `devenv shell -- cargo test --all-targets --all-features` reported 48
-    passing tests (5 unit and 43 integration), with no failures;
+  - `devenv shell -- cargo test --all-targets --all-features` reported 52
+    passing tests (5 unit and 47 integration), with no failures;
   - `devenv shell -- cargo clippy --all-targets --all-features -- -D warnings`
     passed;
-  - `devenv shell -- cargo test --test candidate_adapters` reported 4 passing
-    cross-adapter tests;
+  - `devenv shell -- cargo test --test bakeoff_fixtures` reported 4 passing
+    cross-backend fixture-matrix tests;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
-- Development-test note: the first full test/Clippy run after replacing
-  temporary metric printing put the expected-value tuple on the wrong test
-  loop, producing two missing-variable and two unused-variable diagnostics.
-  The tuple was moved to the current-fixture loop; the focused suite and final
-  full checks then passed.
+- Development-test note: the first fixture-matrix run printed current,
+  reversed, and scale results to collect evidence. Those observations were
+  replaced with exact assertions; the current/reversed full-objective equality
+  and the scale objective-component records passed.
 - Environment note: host-authorized devenv was used because the prior handoff
   established that the sandbox cannot open the user Nix cache or connect to
   `/nix/var/nix/daemon-socket/socket` (`Operation not permitted`). No portable
@@ -122,26 +114,26 @@ Before handing work to another agent:
 
   ```sh
   devenv test
-  devenv shell -- cargo test --test candidate_adapters
+  devenv shell -- cargo test --test bakeoff_fixtures
   devenv shell -- cargo test --all-targets --all-features
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
-- Changed files in this handoff: `Cargo.lock`, `Cargo.toml`, `README.md`,
-  `REWRITE_PLAN.md`, `src/solver/bin_packing.rs`, `src/solver/mod.rs`,
-  `src/solver/u_nesting.rs`, and `tests/candidate_adapters.rs`.
+- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`,
+  `tests/bakeoff_fixtures.rs`, `tests/fixtures/generated/README.md`, and
+  `tests/fixtures/generated/scale_8x77.json`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. Section 5.1's bake-off is mandatory.
 - Decision register changes: none.
-- Remaining blockers: none for `M2.4`. Automated dual-platform CI remains
+- Remaining blockers: none for `M2.5`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M2.4`, add small known-answer, adversarial, current,
-  input-permutation, and generated 8-container/77-item fixtures. Run every
-  viable backend through independent validation and record objective values;
-  keep deadline-performance judgments for `M2.5`.
+- Exact next task: `M2.5`, benchmark and record correctness, objective quality,
+  runtime, determinism, deadline behavior, portability, maintenance, and
+  licensing for the clean-room baseline and both dependency adapters. Preserve
+  the no-selection D-005 state until the evidence and M2.6 ADR are complete.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -424,7 +416,7 @@ Exit: existing input produces compatible JSON/HTML from a validated fixture.
 - [x] `M2.2` Implement the event-based constructive baseline.
 - [x] `M2.3` Adapt each viable library candidate without leaking its types past
   the backend boundary.
-- [ ] `M2.4` Add small known-answer, adversarial, current, permutation, and 8/77
+- [x] `M2.4` Add small known-answer, adversarial, current, permutation, and 8/77
   fixtures.
 - [ ] `M2.5` Benchmark correctness, objective quality, runtime, determinism,
   portability, maintenance, and licensing.
