@@ -15,6 +15,12 @@ pub const MAX_EXACT_SCALED_LENGTH: u64 = (1_u64 << f64::MANTISSA_DIGITS) - 1;
 pub struct Coordinate(u64);
 
 impl Coordinate {
+    /// Construct an internal coordinate that is already in scaled units.
+    #[must_use]
+    pub const fn from_scaled_units(value: u64) -> Self {
+        Self(value)
+    }
+
     /// Convert a compatibility-output coordinate to exact scaled integer units.
     pub fn from_input_units(value: f64) -> Result<Self, CoordinateConversionError> {
         if !value.is_finite() {
@@ -39,6 +45,12 @@ impl Coordinate {
     #[must_use]
     pub const fn get(self) -> u64 {
         self.0
+    }
+
+    /// Add a positive length without permitting integer wraparound.
+    #[must_use]
+    pub const fn checked_add(self, length: Length) -> Option<u64> {
+        self.0.checked_add(length.get())
     }
 }
 
@@ -163,6 +175,16 @@ impl Dimensions {
         u128::from(self.width.get())
             .checked_mul(u128::from(self.length.get()))?
             .checked_mul(u128::from(self.height.get()))
+    }
+
+    /// Return whether two cuboids have the same dimensions up to rotation.
+    #[must_use]
+    pub fn is_permutation_of(self, other: Self) -> bool {
+        let mut left = [self.width.get(), self.length.get(), self.height.get()];
+        let mut right = [other.width.get(), other.length.get(), other.height.get()];
+        left.sort_unstable();
+        right.sort_unstable();
+        left == right
     }
 }
 

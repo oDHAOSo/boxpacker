@@ -4,7 +4,7 @@ Status: Milestone M1 is complete and Milestone M2 is in progress. The
 compatibility shell, exact geometry boundary, safe report, saved-solution
 adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
-are next.
+are implemented, and the event-based constructive baseline is next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -59,31 +59,50 @@ Before handing work to another agent:
 - Git boundary: `boxpacker/` is its own Git repository on the `main` branch,
   independent from the old reference repository. Its parent is not a Git
   repository.
-- Completed before this handoff: `M0` and `M1.1` through `M1.5`. The buildable
-  scaffold, locked dual-platform devenv configuration, immutable current
-  fixtures, compatibility DTOs, CLI contract, exact validated integer
-  boundary, safe report template, and temporary saved-solution adapter are
-  present. No old solver or scoring code was copied.
-- Completed in this handoff: `M1.6`, closing Milestone M1.
-  - `tests/quality_regression.rs` derives baseline metrics from the validated
-    input and adapted saved solution using exact scaled integer volumes.
-  - Assertions lock 57 total items, 49 placed items, 8 unplaced items,
-    582,885.612 packed volume, 26,095.930 unplaced volume, 608,981.542 total
-    item volume, and 735,033.290 total container capacity.
-  - Integer percentage rounding locks the displayed 79.30% saved utilization
-    and 82.85% theoretical utilization without floating-point comparisons.
+- Completed before this handoff: `M0` and all of `M1`. The buildable scaffold,
+  locked dual-platform devenv configuration, compatibility shell, exact
+  geometry boundary, safe report, saved-solution adapter, and immutable
+  baseline regression are present. No old solver or scoring code was copied.
+- Completed in this handoff: `M2.1`.
+  - `src/solution.rs` defines backend-neutral placements and candidate
+    solutions that carry no self-validation claims.
+  - `src/solver/mod.rs` defines an object-safe `SolverBackend`, reproducible
+    seed/thread requests, monotonic deadlines, common bake-off metrics, honest
+    optimality status, and explicit backend failures.
+  - `src/objective.rs` localizes the provisional D-004 volume-first
+    lexicographic ordering: unplaced volume, unplaced count, used containers,
+    unsupported area, bounding volume, then a deterministic geometry key.
+    Better values compare greater so an incumbent store can select `max`.
+  - `validate_solution` is independent of every backend and uses exact integer
+    comparisons to check ID ranges, item coverage, legal rotations, checked
+    extents, original-container bounds, and pairwise non-overlap. Face contact
+    is legal; unsupported placements remain valid but receive an objective
+    penalty.
+  - Successful validation returns checked placed/unplaced volumes, counts,
+    used-container count, unsupported area, compactness bounding volume, and a
+    deterministic key. The current 49-placement saved fixture passes this
+    independent validator.
+  - Tests exercise foreign IDs, duplicate/missing items, rotations, bounds,
+    coordinate overflow, overlap versus face contact, support scoring, every
+    provisional objective tier, deadline behavior, backend object safety,
+    metrics, and the current fixture.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
     and the debug build;
-  - `devenv shell -- cargo test --test quality_regression` reported the exact
-    baseline regression passing;
+  - `devenv shell -- cargo test --all-targets --all-features` reported 36
+    passing tests (3 unit and 33 integration), with no failures;
+  - `devenv shell -- cargo clippy --all-targets --all-features -- -D warnings`
+    passed;
+  - `devenv shell -- cargo test --test solution_properties` reported 10
+    passing domain/validator tests;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
-- Development-test note: the first focused regression compile showed that
-  `u128::from(SCALE)` is not const-stable on the pinned compiler. A direct
-  widening cast is exact for `u64` to `u128`; replacing the const expression
-  with `(SCALE as u128).pow(3)` fixed the compile without changing behavior.
+- Development-test note: focused compilation caught an incorrect method
+  receiver while summarizing validated extents (`Point` instead of its axis
+  coordinates), and later showed that `Ord::min/max` are not const-stable on
+  the pinned compiler. Selecting each point axis and making the small overlap
+  helper non-const corrected both without changing the design.
 - Environment note: host-authorized devenv was used because the prior handoff
   established that the sandbox cannot open the user Nix cache or connect to
   `/nix/var/nix/daemon-socket/socket` (`Operation not permitted`). No portable
@@ -95,24 +114,27 @@ Before handing work to another agent:
 
   ```sh
   devenv test
-  devenv shell -- cargo test --test quality_regression
+  devenv shell -- cargo test --test solution_properties
+  devenv shell -- cargo test --all-targets --all-features
+  devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
-- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`, and
-  `tests/quality_regression.rs`.
+- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`,
+  `src/compatibility.rs`, `src/geometry.rs`, `src/lib.rs`,
+  `src/objective.rs`, `src/solution.rs`, `src/solver/mod.rs`,
+  `src/validate.rs`, and `tests/solution_properties.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. Section 5.1's bake-off is mandatory.
 - Decision register changes: none.
-- Remaining blockers: none for `M2.1`. Automated dual-platform CI remains
+- Remaining blockers: none for `M2.2`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M2.1`, implement the domain-level `SolverBackend`
-  interface, provisional volume-first lexicographic objective, deadlines,
-  metrics, and independent exact solution validator. Keep the validator
-  independent of backend implementations and do not select a solver
-  dependency.
+- Exact next task: `M2.2`, implement the clean-room event-based constructive
+  baseline using unique rotations and coordinates derived only from container
+  walls and placed item faces. Independently validate its result and do not
+  introduce a solver dependency.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -390,7 +412,7 @@ Exit: existing input produces compatible JSON/HTML from a validated fixture.
 
 ### M2 — solver bake-off (`IN PROGRESS`)
 
-- [ ] `M2.1` Implement the domain-level `SolverBackend` interface, objective,
+- [x] `M2.1` Implement the domain-level `SolverBackend` interface, objective,
   deadlines, metrics, and independent solution validator.
 - [ ] `M2.2` Implement the event-based constructive baseline.
 - [ ] `M2.3` Adapt each viable library candidate without leaking its types past

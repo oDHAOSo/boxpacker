@@ -13,8 +13,10 @@ static template backed by serialized JSON data. A temporary saved-solution
 adapter maps the current fixture back to stable input IDs and exact AABBs
 without certifying solver geometry, and exact regression assertions preserve
 its baseline quality metrics. The rewrite is now implementing the domain solver
-and independent-validation boundary. The proposed implementation and acceptance
-criteria are in
+and bake-off. Backend-neutral solutions, deadlines, common metrics, provisional
+lexicographic objectives, and independent exact validation are present; the
+event-based constructive baseline is next. The proposed implementation and
+acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 
 `REWRITE_PLAN.md` is also the canonical AI handoff record. Continuing agents

@@ -2,5 +2,8 @@ pub mod cli;
 pub mod compatibility;
 pub mod geometry;
 pub mod model;
+pub mod objective;
 pub mod report;
+pub mod solution;
+pub mod solver;
 pub mod validate;

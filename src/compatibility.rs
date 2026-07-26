@@ -12,6 +12,7 @@ use crate::geometry::{
     Aabb, Coordinate, CoordinateConversionError, Dimensions, Length, LengthConversionError, Point,
 };
 use crate::model::OutputData;
+use crate::solution::{Placement, Solution};
 use crate::validate::{ContainerId, ItemId, PackingInstance};
 
 /// A saved compatibility output paired with stable input identities.
@@ -36,6 +37,21 @@ impl SavedSolution {
     #[must_use]
     pub fn unplaced_items(&self) -> &[ItemId] {
         &self.unplaced_items
+    }
+
+    /// Copy the adapted fixture into the backend-neutral solution model.
+    #[must_use]
+    pub fn to_solution(&self) -> Solution {
+        let placements = self
+            .containers
+            .iter()
+            .flat_map(|container| {
+                container.placed_items.iter().map(|placement| {
+                    Placement::new(container.container_id, placement.item_id, placement.bounds)
+                })
+            })
+            .collect();
+        Solution::new(placements, self.unplaced_items.clone())
     }
 }
 
@@ -231,15 +247,7 @@ fn find_item(
 }
 
 fn dimensions_are_permutations(left: Dimensions, right: Dimensions) -> bool {
-    let mut left = [left.width().get(), left.length().get(), left.height().get()];
-    let mut right = [
-        right.width().get(),
-        right.length().get(),
-        right.height().get(),
-    ];
-    left.sort_unstable();
-    right.sort_unstable();
-    left == right
+    left.is_permutation_of(right)
 }
 
 fn convert_dimensions(
