@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stable:
+    name: stable / ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: arm64-macos
+            runner: macos-15
+            uname: arm64
+          - name: x86_64-linux
+            runner: ubuntu-24.04
+            uname: x86_64
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Verify native architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual_architecture="$(uname -m)"
+          test "$actual_architecture" = "${{ matrix.uname }}"
+
+      - name: Install stable Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt
+          rustup default stable
+          rustc --version --verbose
+          cargo --version --verbose
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Run strict Clippy
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+
+      - name: Run all tests
+        run: cargo test --locked --all-targets --all-features
+
+      - name: Build release binary
+        run: cargo build --locked --release

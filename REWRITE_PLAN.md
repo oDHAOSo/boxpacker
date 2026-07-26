@@ -76,7 +76,7 @@ Before handing work to another agent:
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
 - Completed in this handoff: every task from `M2.5` through `M3.6`, plus
-  `M4.1`, `M4.2`, and `M4.3`.
+  `M4.1`, `M4.2`, `M4.3`, and `M4.4`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -233,6 +233,19 @@ Before handing work to another agent:
     portfolio presets and independently validates every result. Native ARM64
     current-fixture means are 555.26 µs, 839.48 µs, 2.4512 ms, and 3.8603 ms;
     8/77 means are 815.17 µs, 1.0475 ms, 3.2945 ms, and 5.4898 ms.
+  - `.github/workflows/ci.yml` adds native `macos-15` ARM64 and
+    `ubuntu-24.04` x86-64 jobs. Each job verifies `uname -m`, installs the
+    stable minimal Rust profile with rustfmt and Clippy, and runs formatting,
+    warnings-denied Clippy, all targets/features, and a release build with the
+    Cargo lock enforced.
+  - The workflow grants only read access to repository contents, cancels stale
+    same-ref runs, caps jobs at 15 minutes, and pins `actions/checkout` v6.0.2
+    by full commit SHA. Nightly fuzz tooling remains intentionally outside the
+    stable production matrix per D-009.
+  - This repository has no configured remote and the instruction forbids a
+    push, so the new workflow has not run on GitHub. Local YAML parsing and
+    pinned `actionlint` validation pass; a first hosted run remains required
+    before claiming current post-integration evidence on both platforms.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -341,6 +354,16 @@ Before handing work to another agent:
     recorded above;
   - the M4.3 format check, release build, and final host-authorized
     `devenv test` gate passed;
+  - Ruby/Psych parsed `.github/workflows/ci.yml` as a YAML mapping;
+  - the initial
+    `nix shell --inputs-from . nixpkgs#actionlint --command actionlint ...`
+    attempt failed because this devenv project is not itself a `flake.nix`;
+    no project configuration was changed to hide that mismatch;
+  - `nix shell
+    github:NixOS/nixpkgs/f205b5574fd0cb7da5b702a2da51507b7f4fdd1b#actionlint`
+    used the exact `nixpkgs-src` revision in `devenv.lock`; actionlint 1.7.12
+    reported no workflow errors;
+  - the final host-authorized M4.4 `devenv test` gate passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -383,6 +406,8 @@ Before handing work to another agent:
   devenv shell -- cargo tree -p bin-packing -e normal
   devenv shell -- cargo tree -p u-nesting-d3 -e normal
   devenv shell -- cargo tree -p serde_path_to_error -e normal
+  ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci.yml")'
+  nix shell github:NixOS/nixpkgs/f205b5574fd0cb7da5b702a2da51507b7f4fdd1b#actionlint --command actionlint .github/workflows/ci.yml
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
@@ -422,18 +447,20 @@ Before handing work to another agent:
   `fuzz/README.md`, both `fuzz/fuzz_targets/` targets, both `fuzz/seeds/`
   inputs, `src/app.rs`, `src/solver/constructive.rs`,
   `tests/geometry_properties.rs`, and `tests/solution_properties.rs`.
+- Changed files in M4.4: `.github/workflows/ci.yml`, `README.md`, and
+  `REWRITE_PLAN.md`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
-- Decision register changes: D-005, D-008, and D-009 are now `LOCKED`.
-- Remaining blockers: none for `M4.4`. A sanitizer/coverage-instrumented
-  nightly fuzz campaign remains open, and automated dual-platform CI is the
-  next task.
-- Exact next task: `M4.4`, add automated formatting, strict Clippy, tests, and
-  release builds for ARM64 macOS and x86-64 Linux without coupling fuzz-only
-  nightly tooling to the stable production gate.
+- Decision register changes: D-005, D-008, D-009, and D-010 are now `LOCKED`.
+- Remaining blockers: none for `M4.5`. The first hosted dual-platform workflow
+  run and a sanitizer/coverage-instrumented nightly fuzz campaign remain open
+  verification gaps for the final milestone exit.
+- Exact next task: `M4.5`, document algorithm and optimality status semantics,
+  preset/deadline behavior, and the exact limits of seed/thread
+  reproducibility.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -452,6 +479,7 @@ Before handing work to another agent:
 | D-007 | LOCKED | Keep `boxpacker/` as its own Git repository on `main`, separate from the old reference repository. |
 | D-008 | LOCKED | Use exact-pinned `serde_path_to_error` only at the compatibility-input boundary for actionable DTO paths. |
 | D-009 | LOCKED | Keep exact-pinned libFuzzer targets in an isolated nightly-only package; stable production and dual-platform gates remain independent. |
+| D-010 | LOCKED | Gate native ARM64 macOS and x86-64 Linux with a least-privilege workflow and a full-SHA-pinned checkout action. |
 
 ## 1. Objective and boundaries
 
@@ -748,7 +776,7 @@ permutations preserve objective quality, and deadline behavior is bounded.
 - [x] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
 - [x] `M4.2` Add malformed-input diagnostics and safe report serialization.
 - [x] `M4.3` Complete property tests, fuzz targets, and release benchmarks.
-- [ ] `M4.4` Add dual-platform CI for ARM64 macOS and x86-64 Linux.
+- [x] `M4.4` Add dual-platform CI for ARM64 macOS and x86-64 Linux.
 - [ ] `M4.5` Document algorithm/status semantics, presets, reproducibility, and
   optimality claims.
 - [ ] `M4.6` Update the handoff snapshot with final evidence and remove

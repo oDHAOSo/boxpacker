@@ -62,7 +62,10 @@ and randomized valid/invalid solution validation. An isolated nightly
 `cargo-fuzz` package contains seeded raw-JSON and small selected-portfolio
 targets without changing the stable production toolchain. Criterion records
 solve-plus-independent-validation performance for every production preset on
-both representative fixtures. Dual-platform CI is next.
+both representative fixtures. A GitHub Actions matrix now runs the locked
+stable format, strict Clippy, all-target test, and release-build gates on
+native ARM64 macOS and x86-64 Linux runners. Algorithm/status semantics,
+reproducibility, and user-facing preset documentation are next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 
