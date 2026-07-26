@@ -6,7 +6,9 @@ This is the clean-room Rust rewrite of the project in
 This directory is an independent Git repository. The old project beside it has
 separate history and remains read-only reference material.
 
-The rewrite is intentionally only a buildable scaffold for now. The proposed
+The rewrite is currently implementing its compatibility shell. The legacy JSON
+input/output DTOs and command-line contract are present, but geometry,
+validation, reporting, and solver work are still milestone tasks. The proposed
 implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 
@@ -23,10 +25,10 @@ The native development environment is managed by
 
 ```sh
 devenv shell
-cargo run
+cargo run -- --help
 ```
 
-Run the scaffold quality checks with:
+Run the project quality checks with:
 
 ```sh
 devenv test

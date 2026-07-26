@@ -1,8 +1,8 @@
 # BoxPacker Rewrite Plan
 
 Status: Milestone M1 is in progress. The buildable Rust scaffold passes
-`devenv test` on ARM64 macOS and x86-64 Linux; M1 compatibility work has
-started with immutable current-input and saved-output fixtures.
+`devenv test` on ARM64 macOS and x86-64 Linux; the compatibility DTOs and CLI
+contract are implemented, and exact integer conversion is next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -55,17 +55,30 @@ Before handing work to another agent:
 - Git boundary: `boxpacker/` is its own Git repository on the `main` branch,
   independent from the old reference repository. Its parent is not a Git
   repository.
-- Completed before this handoff: blank Cargo binary, devenv configuration and
-  lock, README, `.gitignore`, this implementation plan, repository-level
-  `AGENTS.md`, and the independent Git repository baseline commit.
-- Completed in this handoff: `M0.5`, `M0.6`, and `M1.1`. The devenv input and
-  lock now include `oxalica/rust-overlay`, which the user confirmed is required
-  for `devenv shell`. The tracked old-project `input.json` and `output.json`
-  were copied byte-for-byte to `tests/fixtures/current/input.json` and
-  `tests/fixtures/current/saved_output.json`; a fixture README records their
+- Completed before this handoff: `M0` and `M1.1`. The buildable scaffold,
+  locked dual-platform devenv configuration, README, `.gitignore`, plan,
+  repository instructions, independent Git history, and immutable current
+  input/saved-output fixtures are present. The fixture README records their
   provenance, counts, and SHA-256 digests. No old solver or scoring code was
   copied.
+- Completed in this handoff: `M1.2`. `src/model.rs` defines separate
+  compatibility input and output DTOs for the legacy field shapes.
+  `src/cli.rs` preserves `-i/--input`, `-o/--output`, the `input.json` and
+  `output.json` defaults, and the sibling `.html` report path rule. It also
+  exposes the required fast/balanced/thorough preset, positive
+  `--time-limit`, reproducible `--seed`, and positive bounded `--threads`
+  controls without assigning solver behavior yet. Fixture-backed tests cover
+  all 6 containers, 57 input items, 49 saved placements, 8 saved unplaced
+  items, the output JSON field shape, CLI defaults/overrides, and invalid
+  search bounds.
 - Verification passed:
+  - `devenv test` passed on ARM64 macOS with the locked environment, including
+    formatting, Clippy with warnings denied, and all tests;
+  - `devenv shell -- cargo test --all-targets --all-features` reported 8
+    passing tests (2 unit and 6 integration), with no failures;
+  - `devenv shell -- cargo run -- --help` displayed the compatible input/output
+    defaults and all required search-control options;
+  - `git diff --check` passed;
   - `cmp` against both tracked old-project source files;
   - `shasum -a 256` produced
     `0bd68c67409195ae2d70369fcef1ceefc9978f31a3a3a91c56f6dba0fea06b37`
@@ -74,16 +87,17 @@ Before handing work to another agent:
     for `saved_output.json`;
   - `jq empty` accepted both fixtures, and count queries confirmed 6
     containers, 57 contents, 49 placed items, and 8 unplaced items;
-  - `devenv test` passed on ARM64 macOS with the locked environment;
   - on an isolated x86-64 QEMU/Colima Linux guest, the official devenv
     container image
     `ghcr.io/cachix/devenv/devenv@sha256:383651824e46d75910bd66167b65067056f5c0d381c40c9d926112fe1b963d6b`
     reported `x86_64 GNU/Linux`, then `devenv test --override-dotfile` passed
     from an ephemeral copy of the new project using the same lock.
-- Environment note: the first sandboxed `devenv test` attempt could not connect
-  to `/nix/var/nix/daemon-socket/socket` and returned `Operation not permitted`.
-  The approved host execution passed, confirming this was sandbox isolation,
-  not a portable project-configuration or host Nix trust-policy failure.
+- Environment note: this handoff's sandboxed `devenv test` attempt could not
+  open `/Users/greg/.cache/nix/binary-cache-v7.sqlite` and could not connect to
+  `/nix/var/nix/daemon-socket/socket`; the latter returned `Operation not
+  permitted`. The approved host execution passed, confirming this was sandbox
+  isolation, not a portable project-configuration or host Nix trust-policy
+  failure.
 - Linux verification notes:
   - `devenv test --system x86_64-linux` alone was insufficient on macOS:
     evaluation and downloads succeeded, but the host could not execute the
@@ -97,30 +111,39 @@ Before handing work to another agent:
 - Principal verification commands used in this handoff:
 
   ```sh
+  devenv test
+  devenv shell -- cargo test --all-targets --all-features
+  devenv shell -- cargo run -- --help
+  git diff --check
+  git -C ../oldBoxPackerForDeletion status --short --branch
+  ```
+- Prior fixture and cross-platform verification commands retained as milestone
+  evidence:
+
+  ```sh
   cmp ../oldBoxPackerForDeletion/input.json tests/fixtures/current/input.json
   cmp ../oldBoxPackerForDeletion/output.json tests/fixtures/current/saved_output.json
   shasum -a 256 tests/fixtures/current/input.json tests/fixtures/current/saved_output.json
   jq empty tests/fixtures/current/input.json tests/fixtures/current/saved_output.json
-  devenv test
   devenv test --system x86_64-linux
   nix shell github:NixOS/nixpkgs/nixos-26.05#colima github:NixOS/nixpkgs/nixos-26.05#docker-client --command colima start boxpacker-x86 --arch x86_64 --vm-type qemu --cpus 4 --memory 6 --disk 30 --runtime docker --mount /Users/greg/git/rust/BoxPacker/boxpacker:w --activate=false --ssh-config=false
   nix shell github:NixOS/nixpkgs/nixos-26.05#docker-client --command docker --context colima-boxpacker-x86 run --rm --mount type=bind,src=/Users/greg/git/rust/BoxPacker/boxpacker,dst=/source,readonly ghcr.io/cachix/devenv/devenv:latest bash -lc 'set -eu; mkdir /tmp/boxpacker-workspace; cp /source/Cargo.toml /source/Cargo.lock /source/devenv.nix /source/devenv.yaml /source/devenv.lock /tmp/boxpacker-workspace/; cp -R /source/src /source/tests /tmp/boxpacker-workspace/; cd /tmp/boxpacker-workspace; uname -a; devenv test --override-dotfile'
   nix shell github:NixOS/nixpkgs/nixos-26.05#colima --command colima stop boxpacker-x86
   ```
-- Changed files in this handoff: `devenv.yaml`, `devenv.lock`,
-  `tests/fixtures/current/README.md`,
-  `tests/fixtures/current/input.json`,
-  `tests/fixtures/current/saved_output.json`, and `REWRITE_PLAN.md`.
-- Old-project state rechecked before implementation:
-  `M src/main.rs`, `?? output.html`, and `?? output.old.html`. Treat all three as
-  user-owned. This handoff did not modify that repository.
+- Changed files in this handoff: `Cargo.toml`, `Cargo.lock`, `README.md`,
+  `src/lib.rs`, `src/main.rs`, `src/cli.rs`, `src/model.rs`,
+  `tests/compatibility.rs`, and `REWRITE_PLAN.md`.
+- Old-project state rechecked before and after implementation:
+  `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
+  user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. Section 5.1's bake-off is mandatory.
 - Decision register changes: none.
 - Remaining blockers: none for the current milestone. Automated
   dual-platform CI remains planned as `M4.4`.
-- Exact next task: `M1.2`, port only the input/output DTOs and CLI contract,
-  using the new compatibility fixtures and preserving the documented module
-  boundaries.
+- Exact next task: `M1.3`, add checked scaled-integer conversion and
+  field-specific input validation, keeping compatibility DTOs separate from
+  internal geometry and assigning stable internal IDs so duplicate names
+  remain legal.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -387,7 +410,7 @@ local host-policy limitation documented.
 
 - [x] `M1.1` Copy the current input and saved output into test fixtures; do not
   modify the originals or import old solver code.
-- [ ] `M1.2` Port only the input/output DTOs and CLI contract.
+- [x] `M1.2` Port only the input/output DTOs and CLI contract.
 - [ ] `M1.3` Add exact integer conversion and field-specific input validation.
 - [ ] `M1.4` Port the current HTML report into a safe template.
 - [ ] `M1.5` Add a temporary adapter that can read the known saved solution for

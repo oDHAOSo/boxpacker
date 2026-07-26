@@ -1,3 +1,7 @@
+use boxpacker::cli::Cli;
+use clap::Parser;
+
 fn main() {
-    println!("BoxPacker rewrite scaffold");
+    let _cli = Cli::parse();
+    println!("BoxPacker rewrite compatibility shell");
 }
