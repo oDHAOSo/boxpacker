@@ -2,8 +2,9 @@
 
 Status: Milestone M1 is in progress. The buildable Rust scaffold passes
 `devenv test` on ARM64 macOS and x86-64 Linux; the compatibility DTOs, CLI
-contract, exact integer input conversion, and safe HTML report template are
-implemented, and the saved-solution adapter is next.
+contract, exact integer geometry boundary, safe HTML report template, and
+saved-solution adapter are implemented, and asserted fixture baseline metrics
+are next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -56,49 +57,54 @@ Before handing work to another agent:
 - Git boundary: `boxpacker/` is its own Git repository on the `main` branch,
   independent from the old reference repository. Its parent is not a Git
   repository.
-- Completed before this handoff: `M0`, `M1.1`, `M1.2`, and `M1.3`. The
-  buildable scaffold, locked dual-platform devenv configuration, immutable
-  current input/saved-output fixtures, compatibility DTOs, CLI contract, and
-  exact validated integer geometry boundary are present. No old solver or
-  scoring code was copied.
-- Completed in this handoff: `M1.4`.
-  - `src/report/template.html` preserves the current report's global and
-    per-container utilization metrics, Three.js container/item rendering and
-    labels, item selection/highlighting, unplaced-item list, and x-ray
-    wireframe toggle.
-  - `src/report/mod.rs` provides an isolated report view model and renderer.
-    The full view model is serialized once as JSON; `<`, `>`, `&`, and the
-    JavaScript line/paragraph separators are escaped before the JSON is
-    embedded in the report data element, preventing names from ending the
-    script element.
-  - User-provided container and item names are inserted into the browser DOM
-    with `textContent` or drawn on the label canvas. The template does not use
-    `innerHTML` or inline click-handler interpolation.
-  - Report tests round-trip the current saved output through the embedded view
-    model, assert the preserved information and interactions, and exercise
-    names containing script-ending sequences, markup, quotes, backticks,
-    ampersands, and JavaScript line/paragraph separators.
+- Completed before this handoff: `M0` and `M1.1` through `M1.4`. The buildable
+  scaffold, locked dual-platform devenv configuration, immutable current
+  input/saved-output fixtures, compatibility DTOs, CLI contract, exact
+  validated integer input boundary, and safe report template are present. No
+  old solver or scoring code was copied.
+- Completed in this handoff: `M1.5`.
+  - `src/compatibility.rs` provides a temporary `adapt_saved_solution` bridge
+    from the compatibility output DTO to stable input container/item IDs and
+    exact geometry. It retains the original `OutputData` as the report source
+    of truth.
+  - Saved non-negative coordinates are converted once to scaled integers with
+    field-specific failures. `Point` and `Aabb` geometry types carry the exact
+    placement data needed by the later independent validator.
+  - Name resolution is deterministic, uses dimensions to disambiguate
+    duplicate display names, and proves the saved fixture accounts for every
+    input item exactly once.
+  - The adapter deliberately does not certify bounds, overlap, support, or
+    orientation validity. Those checks remain at the independent validation
+    boundary in `M2.1`, so the compatibility bridge cannot certify solver
+    output.
+  - Adapter tests cover all 57 current fixture items, stable IDs despite saved
+    container ordering, exact scaled placements, report rendering from the
+    preserved output, field-specific coordinate errors, omitted items, and
+    duplicate names.
 - Verification passed:
-  - final host-authorized `devenv test` passed on ARM64 macOS with the locked
-    environment, including formatting, Clippy with warnings denied, and all
-    tests;
-  - `devenv shell -- cargo test --all-targets --all-features` reported 19
-    passing tests (2 unit and 17 integration), with no failures;
+  - host-authorized `devenv test` passed on ARM64 macOS with the locked
+    environment, including formatting, Clippy with warnings denied, all tests,
+    and the debug build;
+  - `devenv shell -- cargo test --all-targets --all-features` reported 24
+    passing tests (2 unit and 22 integration), with no failures;
   - `devenv shell -- cargo clippy --all-targets --all-features -- -D warnings`
     passed;
+  - `devenv shell -- cargo test --test saved_solution` reported 5 passing
+    adapter tests;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
-- Development-test note: the first host-authorized `devenv test` run exposed
-  one rustfmt-only line-wrap difference in `tests/report.rs`. The file was
-  formatted without changing behavior and the final full gate passed. An
-  optional standalone JavaScript syntax probe could not run because `node` is
-  not installed (`zsh: command not found: node`); the report safety and
-  interaction contract is covered by the passing Rust integration tests.
-- Environment note: the first sandboxed `devenv test` attempt could not open
+- Development-test note: the first focused adapter run exposed two incorrect
+  test fixture index expectations; inspection confirmed the saved output starts
+  with input container ID 5 and item ID 3, and the omitted test item is ID 55.
+  The assertions were corrected without changing adapter behavior. The first
+  format check then reported rustfmt-only layout changes; `cargo fmt` applied
+  them before the full gate.
+- Environment note: the first sandboxed
+  `devenv shell -- cargo test --test saved_solution` attempt could not open
   `/Users/greg/.cache/nix/binary-cache-v7.sqlite` and could not connect to
   `/nix/var/nix/daemon-socket/socket`; the latter returned `Operation not
-  permitted`. Host-authorized devenv commands passed with the same project
-  configuration, confirming sandbox isolation rather than a portable
+  permitted`. Host-authorized devenv commands then passed with the same locked
+  project configuration, confirming sandbox isolation rather than a portable
   configuration or host Nix policy problem.
 - Prior cross-platform evidence remains valid: `devenv test` passed on native
   ARM64 macOS and in an isolated x86-64 QEMU/Colima Linux guest using the same
@@ -107,13 +113,15 @@ Before handing work to another agent:
 
   ```sh
   devenv test
+  devenv shell -- cargo test --test saved_solution
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
   devenv shell -- cargo test --all-targets --all-features
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
-- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`, `src/lib.rs`,
-  `src/report/mod.rs`, `src/report/template.html`, and `tests/report.rs`.
+- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`,
+  `src/compatibility.rs`, `src/geometry.rs`, `src/lib.rs`, and
+  `tests/saved_solution.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
@@ -121,9 +129,11 @@ Before handing work to another agent:
 - Decision register changes: none.
 - Remaining blockers: none for the current milestone. Automated
   dual-platform CI remains planned as `M4.4`.
-- Exact next task: `M1.5`, add a temporary compatibility adapter that reads the
-  known saved solution for report and independent validator testing. Keep the
-  adapter outside solver logic and do not copy old packing or scoring code.
+- Exact next task: `M1.6`, calculate and assert the immutable fixture baseline:
+  49/57 placed, 582,885.612 packed volume, 79.30% total-container utilization,
+  and 8 unplaced items. Derive the metrics from the compatibility fixture
+  through the saved-solution adapter without introducing solver scoring or
+  choosing a solver dependency.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -393,7 +403,7 @@ local host-policy limitation documented.
 - [x] `M1.2` Port only the input/output DTOs and CLI contract.
 - [x] `M1.3` Add exact integer conversion and field-specific input validation.
 - [x] `M1.4` Port the current HTML report into a safe template.
-- [ ] `M1.5` Add a temporary adapter that can read the known saved solution for
+- [x] `M1.5` Add a temporary adapter that can read the known saved solution for
   report and validator testing.
 - [ ] `M1.6` Record fixture baseline metrics in an asserted regression test.
 

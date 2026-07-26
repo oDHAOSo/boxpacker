@@ -10,6 +10,60 @@ pub const SCALE: u64 = 10;
 /// to integer geometry lossless.
 pub const MAX_EXACT_SCALED_LENGTH: u64 = (1_u64 << f64::MANTISSA_DIGITS) - 1;
 
+/// A non-negative coordinate expressed entirely in scaled integer units.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Coordinate(u64);
+
+impl Coordinate {
+    /// Convert a compatibility-output coordinate to exact scaled integer units.
+    pub fn from_input_units(value: f64) -> Result<Self, CoordinateConversionError> {
+        if !value.is_finite() {
+            return Err(CoordinateConversionError::NonFinite);
+        }
+        if value < 0.0 {
+            return Err(CoordinateConversionError::Negative);
+        }
+
+        let scaled = value * SCALE as f64;
+        if !scaled.is_finite() || scaled > MAX_EXACT_SCALED_LENGTH as f64 {
+            return Err(CoordinateConversionError::OutOfRange);
+        }
+        if scaled.fract() != 0.0 {
+            return Err(CoordinateConversionError::OverPrecision);
+        }
+
+        Ok(Self(scaled as u64))
+    }
+
+    /// Return this coordinate in internal scaled units.
+    #[must_use]
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+}
+
+/// Reason a compatibility-output coordinate cannot become exact geometry.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CoordinateConversionError {
+    NonFinite,
+    Negative,
+    OverPrecision,
+    OutOfRange,
+}
+
+impl fmt::Display for CoordinateConversionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NonFinite => formatter.write_str("must be finite"),
+            Self::Negative => formatter.write_str("must not be negative"),
+            Self::OverPrecision => formatter.write_str("must use no more than one decimal place"),
+            Self::OutOfRange => formatter.write_str("is too large to convert exactly"),
+        }
+    }
+}
+
+impl std::error::Error for CoordinateConversionError {}
+
 /// A positive length expressed entirely in scaled integer units.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Length(NonZeroU64);
@@ -109,5 +163,59 @@ impl Dimensions {
         u128::from(self.width.get())
             .checked_mul(u128::from(self.length.get()))?
             .checked_mul(u128::from(self.height.get()))
+    }
+}
+
+/// One exact axis-aligned point in compatibility coordinate space.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct Point {
+    x: Coordinate,
+    y: Coordinate,
+    z: Coordinate,
+}
+
+impl Point {
+    #[must_use]
+    pub const fn new(x: Coordinate, y: Coordinate, z: Coordinate) -> Self {
+        Self { x, y, z }
+    }
+
+    #[must_use]
+    pub const fn x(self) -> Coordinate {
+        self.x
+    }
+
+    #[must_use]
+    pub const fn y(self) -> Coordinate {
+        self.y
+    }
+
+    #[must_use]
+    pub const fn z(self) -> Coordinate {
+        self.z
+    }
+}
+
+/// An exact axis-aligned cuboid, ready for independent solution validation.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct Aabb {
+    origin: Point,
+    dimensions: Dimensions,
+}
+
+impl Aabb {
+    #[must_use]
+    pub const fn new(origin: Point, dimensions: Dimensions) -> Self {
+        Self { origin, dimensions }
+    }
+
+    #[must_use]
+    pub const fn origin(self) -> Point {
+        self.origin
+    }
+
+    #[must_use]
+    pub const fn dimensions(self) -> Dimensions {
+        self.dimensions
     }
 }
