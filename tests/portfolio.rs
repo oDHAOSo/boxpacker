@@ -1,19 +1,19 @@
 use std::num::NonZeroUsize;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use boxpacker::model::InputData;
 use boxpacker::objective::ObjectiveValue;
 use boxpacker::solver::constructive::ConstructiveBackend;
 use boxpacker::solver::portfolio::PortfolioBackend;
-use boxpacker::solver::{SolveRequest, SolverBackend};
+use boxpacker::solver::{CancellationToken, SolveRequest, SolverBackend};
 use boxpacker::validate::{PackingInstance, validate_solution};
 
 const CURRENT_INPUT: &str = include_str!("fixtures/current/input.json");
+const SCALE_INPUT: &str = include_str!("fixtures/generated/scale_8x77.json");
 
-fn instance() -> PackingInstance {
-    let input: InputData =
-        serde_json::from_str(CURRENT_INPUT).expect("current fixture should deserialize");
-    PackingInstance::try_from(&input).expect("current fixture should validate")
+fn instance(json: &str) -> PackingInstance {
+    let input: InputData = serde_json::from_str(json).expect("fixture should deserialize");
+    PackingInstance::try_from(&input).expect("fixture should validate")
 }
 
 fn request(seed: u64, threads: usize) -> SolveRequest {
@@ -26,7 +26,7 @@ fn request(seed: u64, threads: usize) -> SolveRequest {
 
 #[test]
 fn fixed_seed_portfolio_is_reproducible_across_thread_counts() {
-    let instance = instance();
+    let instance = instance(CURRENT_INPUT);
     let backend = PortfolioBackend::new(NonZeroUsize::new(8).expect("eight is non-zero"));
 
     let serial = backend
@@ -49,7 +49,7 @@ fn fixed_seed_portfolio_is_reproducible_across_thread_counts() {
 
 #[test]
 fn portfolio_retains_or_improves_the_canonical_incumbent() {
-    let instance = instance();
+    let instance = instance(CURRENT_INPUT);
     let canonical = ConstructiveBackend
         .solve(&instance, &request(91, 1))
         .expect("canonical constructor should solve");
@@ -68,4 +68,56 @@ fn portfolio_retains_or_improves_the_canonical_incumbent() {
     );
     assert_eq!(portfolio_summary.placed_item_count(), 53);
     assert_eq!(portfolio_summary.placed_volume(), 587_815_524);
+}
+
+#[test]
+fn cancelled_request_returns_a_valid_canonical_incumbent() {
+    let instance = instance(CURRENT_INPUT);
+    let cancellation = CancellationToken::new();
+    cancellation.cancel();
+    let request = SolveRequest::with_cancellation(
+        Duration::from_secs(10),
+        11,
+        NonZeroUsize::new(4).expect("four is non-zero"),
+        cancellation,
+    );
+
+    let outcome = PortfolioBackend::default()
+        .solve(&instance, &request)
+        .expect("cancelled portfolio should return its valid canonical incumbent");
+    let summary = validate_solution(&instance, outcome.solution())
+        .expect("cancelled incumbent should validate");
+
+    assert_eq!(outcome.metrics().validated_candidates(), 1);
+    assert_eq!(summary.placed_item_count(), 0);
+    assert_eq!(summary.unplaced_item_count(), 57);
+}
+
+#[test]
+fn deadline_stops_large_portfolio_with_shutdown_allowance() {
+    let instance = instance(SCALE_INPUT);
+    let time_limit = Duration::from_millis(5);
+    let allowance = Duration::from_millis(250);
+    let request = SolveRequest::new(
+        time_limit,
+        19,
+        NonZeroUsize::new(4).expect("four is non-zero"),
+    );
+    let backend =
+        PortfolioBackend::new(NonZeroUsize::new(10_000).expect("ten thousand is non-zero"));
+
+    let started_at = Instant::now();
+    let outcome = backend
+        .solve(&instance, &request)
+        .expect("deadline-bounded portfolio should return an incumbent");
+    let wall_time = started_at.elapsed();
+
+    validate_solution(&instance, outcome.solution())
+        .expect("deadline-bounded incumbent should validate");
+    assert!(
+        wall_time <= time_limit + allowance,
+        "portfolio took {wall_time:?} for a {time_limit:?} budget"
+    );
+    assert!(outcome.metrics().validated_candidates() >= 1);
+    assert!(outcome.metrics().validated_candidates() < 10_000);
 }

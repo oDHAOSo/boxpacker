@@ -1,5 +1,7 @@
 use std::fmt;
 use std::num::NonZeroUsize;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use crate::solution::Solution;
@@ -19,21 +21,55 @@ pub trait SolverBackend: Send + Sync {
     ) -> Result<SolverOutcome, SolverError>;
 }
 
+/// Cloneable cooperative-cancellation signal shared by a solve and its owner.
+#[derive(Clone, Debug, Default)]
+pub struct CancellationToken {
+    cancelled: Arc<AtomicBool>,
+}
+
+impl CancellationToken {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Release);
+    }
+
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Acquire)
+    }
+}
+
 /// Reproducible effort controls supplied to a backend.
 #[derive(Clone, Debug)]
 pub struct SolveRequest {
     deadline: Deadline,
     seed: u64,
     threads: NonZeroUsize,
+    cancellation: CancellationToken,
 }
 
 impl SolveRequest {
     #[must_use]
     pub fn new(time_limit: Duration, seed: u64, threads: NonZeroUsize) -> Self {
+        Self::with_cancellation(time_limit, seed, threads, CancellationToken::new())
+    }
+
+    #[must_use]
+    pub fn with_cancellation(
+        time_limit: Duration,
+        seed: u64,
+        threads: NonZeroUsize,
+        cancellation: CancellationToken,
+    ) -> Self {
         Self {
             deadline: Deadline::new(time_limit),
             seed,
             threads,
+            cancellation,
         }
     }
 
@@ -50,6 +86,16 @@ impl SolveRequest {
     #[must_use]
     pub const fn threads(&self) -> NonZeroUsize {
         self.threads
+    }
+
+    #[must_use]
+    pub fn cancellation(&self) -> CancellationToken {
+        self.cancellation.clone()
+    }
+
+    #[must_use]
+    pub fn should_stop(&self) -> bool {
+        self.cancellation.is_cancelled() || self.deadline.is_expired()
     }
 }
 
@@ -230,5 +276,21 @@ mod tests {
             deadline.remaining_at(started_at + Duration::from_secs(8)),
             Duration::ZERO
         );
+    }
+
+    #[test]
+    fn cancellation_is_shared_across_token_clones_and_requests() {
+        let cancellation = CancellationToken::new();
+        let request = SolveRequest::with_cancellation(
+            Duration::from_secs(1),
+            0,
+            NonZeroUsize::new(1).expect("one is non-zero"),
+            cancellation.clone(),
+        );
+
+        assert!(!request.should_stop());
+        cancellation.cancel();
+        assert!(request.should_stop());
+        assert!(request.cancellation().is_cancelled());
     }
 }

@@ -29,7 +29,11 @@ candidate rejections are in
 [`docs/decisions/0001-solver-backend.md`](docs/decisions/0001-solver-backend.md).
 M3 now has deterministic seeded portfolio work partitioning whose stable
 reduction retains the canonical constructor as a quality floor across thread
-counts. Deadline cancellation and a validated shared incumbent are next.
+counts. Solve requests now carry a cloneable cooperative-cancellation token;
+the portfolio establishes a canonical incumbent, independently validates every
+completed worker candidate before publishing it to the shared store, and stops
+launching work when cancelled or out of time. Improvement neighborhoods are
+next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

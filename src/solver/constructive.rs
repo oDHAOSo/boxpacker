@@ -59,7 +59,7 @@ pub(super) fn solve_with_item_order(
     let mut unplaced_items = Vec::new();
 
     for (position, item_id) in item_ids.iter().copied().enumerate() {
-        if request.deadline().is_expired() {
+        if request.should_stop() {
             unplaced_items.extend(item_ids[position..].iter().copied());
             break;
         }
@@ -168,7 +168,7 @@ fn find_best_candidate(
         let mut seen = BTreeSet::new();
         for space in &state.spaces {
             for rotation in &rotations {
-                if request.deadline().is_expired() {
+                if request.should_stop() {
                     return Ok(best);
                 }
                 *explored_candidates = explored_candidates

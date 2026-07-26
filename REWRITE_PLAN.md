@@ -10,7 +10,8 @@ evaluated, and removed; and the full M2.5 correctness, quality, runtime,
 determinism, deadline, portability, maintenance, and licensing evidence is
 recorded. ADR 0001 selects the in-tree clean-room backend and rejects both
 external candidates. Deterministic seeded portfolio work partitioning is
-implemented; deadline cancellation and a validated shared incumbent are next.
+implemented with cooperative deadline cancellation and a validated shared
+incumbent; improvement neighborhoods are next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -70,7 +71,7 @@ Before handing work to another agent:
   isolated adapters for both exact-version dependency candidates, and the
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
-- Completed in this handoff: `M2.5`, `M2.6`, and `M3.1`.
+- Completed in this handoff: `M2.5`, `M2.6`, `M3.1`, and `M3.2`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -120,8 +121,18 @@ Before handing work to another agent:
   - The same fixed seed and eight work units return an identical current-fixture
     solution with one or four threads. Because work unit zero is canonical, the
     selected portfolio objective retains or improves the selected M2 baseline.
-    Deadline cancellation and sharing an incumbent while workers run remain
-    intentionally scoped to `M3.2`.
+  - `SolveRequest` now owns a cloneable `CancellationToken`; constructive
+    search polls cancellation and its monotonic deadline at item and candidate
+    boundaries. The portfolio always produces and validates its canonical
+    incumbent before optional seeded workers.
+  - Each completed worker candidate passes the independent exact validator
+    before entering the mutex-protected shared incumbent. Publication compares
+    the domain objective with a stable work-index tie-break, while final
+    metrics are reduced in work-index order so scheduling cannot change them.
+  - Seeded workers stop cooperatively between work units and within
+    constructive enumeration. A pre-cancelled request returns a valid complete
+    canonical incumbent, and a 10,000-work-unit 8/77 request honors a 5 ms
+    deadline within the 250 ms shutdown allowance.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -153,6 +164,12 @@ Before handing work to another agent:
   - the four-thread Criterion point estimates were 1.8906 ms for the
     eight-work-unit current-fixture portfolio and 2.5999 ms for its 8/77
     portfolio;
+  - after M3.2,
+    `devenv shell -- cargo test --all-targets --all-features` reported 58
+    passing tests (9 unit and 49 integration), with no failures;
+  - `devenv shell -- cargo test --test portfolio` reported 4 passing
+    reproducibility, quality-floor, cancellation, and deadline tests;
+  - the M3.2 strict Clippy run and release build passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -201,17 +218,20 @@ Before handing work to another agent:
 - Changed files in M3.1: `README.md`, `REWRITE_PLAN.md`,
   `benches/current_fixture.rs`, `src/solver/constructive.rs`,
   `src/solver/mod.rs`, `src/solver/portfolio.rs`, and `tests/portfolio.rs`.
+- Changed files in M3.2: `README.md`, `REWRITE_PLAN.md`,
+  `src/solver/constructive.rs`, `src/solver/mod.rs`,
+  `src/solver/portfolio.rs`, and `tests/portfolio.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
 - Decision register changes: D-005 is now `LOCKED`.
-- Remaining blockers: none for `M3.2`. Automated dual-platform CI remains
+- Remaining blockers: none for `M3.3`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M3.2`, add deadline cancellation and a validated shared
-  incumbent so bounded workers can stop cooperatively and publish only
-  independently valid improvements.
+- Exact next task: `M3.3`, add deterministic move, swap, rotation,
+  ejection-chain, and ruin/recreate neighborhoods that operate behind the
+  domain solver boundary and publish only objective improvements.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -507,7 +527,7 @@ saved result or has a documented gap and next experiment.
 ### M3 — anytime improvement engine (`IN PROGRESS`)
 
 - [x] `M3.1` Add deterministic portfolio work partitioning and seeded search.
-- [ ] `M3.2` Add deadline cancellation and a validated shared incumbent.
+- [x] `M3.2` Add deadline cancellation and a validated shared incumbent.
 - [ ] `M3.3` Add move, swap, rotation, ejection-chain, and ruin/recreate
   neighborhoods.
 - [ ] `M3.4` Add bounded branch-and-bound repair for small residuals.
