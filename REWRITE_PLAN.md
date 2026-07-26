@@ -1,6 +1,8 @@
 # BoxPacker Rewrite Plan
 
-Status: Milestones M0 through M3 are complete and Milestone M4 is in progress.
+Status: Milestones M0 through M3 and all M4 implementation tasks are complete;
+final M4 exit awaits the D-004 product decision and a first hosted
+dual-platform CI run.
 The compatibility shell, exact geometry boundary, safe report, saved-solution
 adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
@@ -63,7 +65,8 @@ Before handing work to another agent:
 
 ### Current handoff snapshot — 2026-07-26
 
-- Current milestone: `M4 — integration and hardening` (`IN PROGRESS`).
+- Current milestone: `M4 — integration and hardening` (`BLOCKED` on the D-004
+  product decision and first hosted dual-platform CI evidence).
 - Milestone M0 status: `DONE`; `devenv test` passed on both target platforms.
 - Milestone M1 status: `DONE`; the compatibility fixture passes its exact
   baseline regression and renders through the safe report template.
@@ -75,8 +78,8 @@ Before handing work to another agent:
   isolated adapters for both exact-version dependency candidates, and the
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
-- Completed in this handoff: every task from `M2.5` through `M3.6`, plus
-  `M4.1`, `M4.2`, `M4.3`, `M4.4`, and `M4.5`.
+- Completed across implementation handoffs: every task from `M2.5` through
+  `M3.6`, plus all of `M4.1` through `M4.6`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -225,10 +228,14 @@ Before handing work to another agent:
     rendering.
   - Both fuzz targets compile and pass warnings-denied Clippy under the locked
     stable environment. Seed-based direct libFuzzer smoke runs completed 1,000
-    inputs per target without a crash. Those smoke runs explicitly warned that
-    sanitizer symbols and coverage instrumentation were absent; a proper
-    nightly `cargo-fuzz` sanitizer campaign remains a recorded verification
-    gap rather than being hidden by changing the stable project toolchain.
+    inputs per target without a crash.
+  - M4.6 closed the sanitizer/coverage gap using temporary nightly tooling
+    outside the stable project: `cargo-fuzz` 0.13.2 with
+    `rustc 1.99.0-nightly (008fa22ce 2026-07-25)` ran 10,000
+    coverage-guided, sanitizer-instrumented inputs against each target without
+    a crash. The campaigns used the checked-in seed directories as corpora;
+    591 generated untracked corpus files were removed afterward while the two
+    tracked seeds and empty ignored artifact directories were preserved.
   - Criterion now measures constructive plus fast, balanced, and thorough
     portfolio presets and independently validates every result. Native ARM64
     current-fixture means are 555.26 µs, 839.48 µs, 2.4512 ms, and 3.8603 ms;
@@ -360,8 +367,8 @@ Before handing work to another agent:
   - `devenv shell -- cargo check --manifest-path fuzz/Cargo.toml --all-targets`
     compiled both exact-pinned fuzz targets;
   - direct seed-based `cargo run` smoke campaigns completed 1,000 inputs for
-    each fuzz target without a crash, with the missing sanitizer/coverage
-    instrumentation warning recorded above;
+    each fuzz target without a crash; their missing sanitizer/coverage
+    instrumentation was subsequently supplied by the M4.6 campaigns;
   - root and fuzz-package warnings-denied Clippy runs passed;
   - `devenv shell -- cargo bench --bench current_fixture -- --noplot`
     completed all eight release benchmark groups with the point estimates
@@ -384,6 +391,11 @@ Before handing work to another agent:
   - focused stable-status and real-process CLI summary tests passed;
   - the M4.5 format check, strict Clippy run, release build, and final
     host-authorized `devenv test` gate passed;
+  - isolated temporary nightly `cargo-fuzz` campaigns ran 10,000
+    sanitizer/coverage-guided inputs for each of `json_input` and
+    `small_instances` without a crash or persisted artifact;
+  - the final M4.6 host-authorized `devenv test` gate passed after the handoff
+    consolidation;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -428,6 +440,7 @@ Before handing work to another agent:
   devenv shell -- cargo tree -p serde_path_to_error -e normal
   ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci.yml")'
   nix shell github:NixOS/nixpkgs/f205b5574fd0cb7da5b702a2da51507b7f4fdd1b#actionlint --command actionlint .github/workflows/ci.yml
+  RUSTUP_HOME=/private/tmp/boxpacker-m4-rustup CARGO_HOME=/private/tmp/boxpacker-m4-cargo nix shell github:NixOS/nixpkgs/f205b5574fd0cb7da5b702a2da51507b7f4fdd1b#cargo-fuzz github:NixOS/nixpkgs/f205b5574fd0cb7da5b702a2da51507b7f4fdd1b#rustup --command bash -lc 'rustup toolchain install nightly --profile minimal; cargo +nightly fuzz run json_input fuzz/seeds/json_input -- -runs=10000; cargo +nightly fuzz run small_instances fuzz/seeds/small_instances -- -runs=10000'
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
@@ -471,18 +484,25 @@ Before handing work to another agent:
   `REWRITE_PLAN.md`.
 - Changed files in M4.5: `README.md`, `REWRITE_PLAN.md`, `docs/usage.md`,
   `src/main.rs`, `src/solver/mod.rs`, and `tests/pipeline.rs`.
+- Changed files in M4.6: `README.md` and `REWRITE_PLAN.md`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
 - Decision register changes: D-005 and D-008 through D-011 are now `LOCKED`.
-- Remaining blockers for final exit: product confirmation of D-004, the first
-  hosted dual-platform workflow run, and a sanitizer/coverage-instrumented
-  nightly fuzz campaign. None blocks consolidating the M4.6 handoff first.
-- Exact next task: `M4.6`, consolidate final evidence and remove only
-  genuinely obsolete provisional text, then request the one product decision
-  needed to resolve D-004.
+  No obsolete provisional decision remained to remove: D-004 still represents
+  a genuine product choice and remains explicit rather than being silently
+  locked.
+- Remaining blockers for final M4 exit: product confirmation of D-004 and the
+  first hosted dual-platform workflow run. This repository has no remote and
+  pushing is outside the authorized scope, so hosted evidence requires an
+  external repository/CI action.
+- Exact next task: resolve D-004. If count-first is selected, change the local
+  `ObjectiveValue` ordering and update affected assertions/documentation; if
+  volume-first is confirmed, lock D-004 without solver redesign. Then run the
+  existing hosted CI workflow on both native matrix entries and record the
+  results.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -794,7 +814,7 @@ saved result or has a documented gap and next experiment.
 Exit: longer presets monotonically improve or retain quality, input
 permutations preserve objective quality, and deadline behavior is bounded.
 
-### M4 — integration and hardening (`IN PROGRESS`)
+### M4 — integration and hardening (`BLOCKED`)
 
 - [x] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
 - [x] `M4.2` Add malformed-input diagnostics and safe report serialization.
@@ -802,7 +822,7 @@ permutations preserve objective quality, and deadline behavior is bounded.
 - [x] `M4.4` Add dual-platform CI for ARM64 macOS and x86-64 Linux.
 - [x] `M4.5` Document algorithm/status semantics, presets, reproducibility, and
   optimality claims.
-- [ ] `M4.6` Update the handoff snapshot with final evidence and remove
+- [x] `M4.6` Update the handoff snapshot with final evidence and remove
   obsolete provisional decisions.
 
 Exit: `devenv test` passes on both target platforms, the current fixture beats

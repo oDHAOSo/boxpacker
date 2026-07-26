@@ -67,6 +67,9 @@ stable format, strict Clippy, all-target test, and release-build gates on
 native ARM64 macOS and x86-64 Linux runners. Algorithm/status semantics,
 reproducibility limits, presets, and status meanings are documented in
 [`docs/usage.md`](docs/usage.md).
+All planned rewrite implementation tasks are complete. Final M4 exit awaits
+confirmation of the provisional volume-first objective and the first hosted
+run of the checked-in native ARM64 macOS/x86-64 Linux workflow.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 
