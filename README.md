@@ -52,8 +52,12 @@ input, runs the selected portfolio, independently validates its incumbent, and
 writes both the legacy JSON shape and the safe HTML report. Fast, balanced, and
 thorough currently use fixed monotonic work budgets of 1, 8, and 14 units with
 default time limits of 1, 10, and 30 seconds; `--time-limit` overrides only the
-deadline. Malformed-input diagnostics and further report-serialization
-hardening are next.
+deadline. Malformed JSON now retains line/column context and identifies the
+exact DTO field path for shape errors; exact dimension validation still
+reports all bad fields together. Report rendering rejects invalid numeric data
+and template placeholder mistakes before producing HTML while retaining its
+script-safe JSON escaping. Property/fuzz coverage and release benchmarks are
+next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

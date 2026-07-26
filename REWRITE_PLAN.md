@@ -76,7 +76,7 @@ Before handing work to another agent:
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
 - Completed in this handoff: every task from `M2.5` through `M3.6`, plus
-  `M4.1`.
+  `M4.1` and `M4.2`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -198,6 +198,20 @@ Before handing work to another agent:
     53 / 57 placed and 587,815.524 packed volume, re-adapts the emitted JSON to
     exact stable-ID geometry, independently validates it, and proves that the
     report embeds the same output document.
+  - Input deserialization now uses exact-pinned `serde_path_to_error` 0.1.20
+    around the existing Serde DTOs. JSON syntax errors preserve line and column
+    context, structural errors add the exact array/field path, trailing data is
+    rejected, and field-specific exact-geometry validation remains a separate
+    aggregate stage.
+  - Integration tests cover truncated JSON, a wrong type at
+    `contents[0].height`, and three simultaneous invalid dimensions. Every
+    failure identifies its input file and relevant location, and no JSON or
+    HTML artifact is written.
+  - Report rendering now has a typed error boundary. It requires exactly one
+    data placeholder even in release builds and rejects non-finite, nonpositive
+    dimensions or negative coordinates with a compatibility field path before
+    serialization. Existing script-ending, markup, arbitrary-name, and DOM
+    text-insertion safety proofs still pass.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -279,6 +293,16 @@ Before handing work to another agent:
     passed;
   - the M4.1 strict Clippy run, release build, and final host-authorized
     `devenv test` gate passed;
+  - after M4.2,
+    `devenv shell -- cargo test --all-targets --all-features` reported 77
+    passing tests (17 unit and 60 integration), with no failures;
+  - `devenv shell -- cargo test --test pipeline --test report` reported 9
+    passing diagnostics, artifact, numeric-validation, and report-safety
+    tests;
+  - `devenv shell -- cargo tree -p serde_path_to_error -e normal` confirmed
+    the exact 0.1.20 diagnostic dependency and its small normal graph;
+  - the M4.2 format check, strict Clippy run, release build, and final
+    host-authorized `devenv test` gate passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -307,12 +331,14 @@ Before handing work to another agent:
   devenv shell -- cargo test --test bakeoff_evaluation
   devenv shell -- cargo test --test portfolio
   devenv shell -- cargo test --test pipeline
+  devenv shell -- cargo test --test report
   devenv shell -- cargo test --all-targets --all-features
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
   devenv shell -- cargo bench --bench current_fixture -- --noplot
   devenv shell -- cargo build --release
   devenv shell -- cargo tree -p bin-packing -e normal
   devenv shell -- cargo tree -p u-nesting-d3 -e normal
+  devenv shell -- cargo tree -p serde_path_to_error -e normal
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
@@ -344,17 +370,19 @@ Before handing work to another agent:
 - Changed files in M4.1: `README.md`, `REWRITE_PLAN.md`, `src/app.rs`,
   `src/compatibility.rs`, `src/lib.rs`, `src/main.rs`, and
   `tests/pipeline.rs`.
+- Changed files in M4.2: `Cargo.lock`, `Cargo.toml`, `README.md`,
+  `REWRITE_PLAN.md`, `src/app.rs`, `src/report/mod.rs`, `tests/pipeline.rs`,
+  and `tests/report.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
-- Decision register changes: D-005 is now `LOCKED`.
-- Remaining blockers: none for `M4.2`. Automated dual-platform CI remains
+- Decision register changes: D-005 and D-008 are now `LOCKED`.
+- Remaining blockers: none for `M4.3`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M4.2`, add malformed-input diagnostics and safe
-  report-serialization failure handling without weakening the compatibility
-  schema or moving I/O concerns into solver modules.
+- Exact next task: `M4.3`, complete missing property tests and bounded fuzz
+  targets, then record release benchmarks for the current and 8/77 fixtures.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -371,6 +399,7 @@ Before handing work to another agent:
 | D-005 | LOCKED | Select the in-tree clean-room backend; reject and remove both evaluated solver dependencies per ADR 0001. |
 | D-006 | DEFERRED | Add native MILP/CP-SAT only if measured quality justifies its portability cost. |
 | D-007 | LOCKED | Keep `boxpacker/` as its own Git repository on `main`, separate from the old reference repository. |
+| D-008 | LOCKED | Use exact-pinned `serde_path_to_error` only at the compatibility-input boundary for actionable DTO paths. |
 
 ## 1. Objective and boundaries
 
@@ -665,7 +694,7 @@ permutations preserve objective quality, and deadline behavior is bounded.
 ### M4 — integration and hardening (`IN PROGRESS`)
 
 - [x] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
-- [ ] `M4.2` Add malformed-input diagnostics and safe report serialization.
+- [x] `M4.2` Add malformed-input diagnostics and safe report serialization.
 - [ ] `M4.3` Complete property tests, fuzz targets, and release benchmarks.
 - [ ] `M4.4` Add dual-platform CI for ARM64 macOS and x86-64 Linux.
 - [ ] `M4.5` Document algorithm/status semantics, presets, reproducibility, and

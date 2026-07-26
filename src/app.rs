@@ -10,7 +10,7 @@ use std::time::Duration;
 use crate::cli::{Cli, SearchPreset};
 use crate::compatibility::output_from_solution;
 use crate::model::InputData;
-use crate::report::render_html;
+use crate::report::{ReportRenderError, render_html};
 use crate::solver::portfolio::PortfolioBackend;
 use crate::solver::{OptimalityStatus, SolveRequest, SolverBackend, SolverError, SolverMetrics};
 use crate::validate::{
@@ -102,11 +102,10 @@ pub fn run(cli: &Cli) -> Result<RunSummary, AppError> {
         path: cli.input.clone(),
         source,
     })?;
-    let input: InputData =
-        serde_json::from_str(&input_json).map_err(|source| AppError::ParseInput {
-            path: cli.input.clone(),
-            source,
-        })?;
+    let input = parse_input(&input_json).map_err(|source| AppError::ParseInput {
+        path: cli.input.clone(),
+        source,
+    })?;
     let instance = PackingInstance::try_from(&input).map_err(AppError::ValidateInput)?;
 
     let settings = SearchSettings::for_preset(cli.preset);
@@ -139,6 +138,51 @@ pub fn run(cli: &Cli) -> Result<RunSummary, AppError> {
     })
 }
 
+fn parse_input(input_json: &str) -> Result<InputData, InputParseError> {
+    let mut deserializer = serde_json::Deserializer::from_str(input_json);
+    let input = serde_path_to_error::deserialize(&mut deserializer).map_err(|error| {
+        let path = error.path().to_string();
+        InputParseError {
+            json_path: (path != ".").then_some(path),
+            source: error.into_inner(),
+        }
+    })?;
+    deserializer.end().map_err(|source| InputParseError {
+        json_path: None,
+        source,
+    })?;
+    Ok(input)
+}
+
+/// JSON syntax or DTO-shape failure with an optional document path.
+#[derive(Debug)]
+pub struct InputParseError {
+    json_path: Option<String>,
+    source: serde_json::Error,
+}
+
+impl InputParseError {
+    #[must_use]
+    pub fn json_path(&self) -> Option<&str> {
+        self.json_path.as_deref()
+    }
+}
+
+impl fmt::Display for InputParseError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(path) = &self.json_path {
+            write!(formatter, "at {path}: ")?;
+        }
+        self.source.fmt(formatter)
+    }
+}
+
+impl Error for InputParseError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&self.source)
+    }
+}
+
 fn write_output(path: &Path, contents: &str) -> Result<(), AppError> {
     fs::write(path, contents).map_err(|source| AppError::WriteOutput {
         path: path.to_owned(),
@@ -156,13 +200,13 @@ pub enum AppError {
     },
     ParseInput {
         path: PathBuf,
-        source: serde_json::Error,
+        source: InputParseError,
     },
     ValidateInput(InputValidationErrors),
     Solve(SolverError),
     ValidateSolution(SolutionValidationErrors),
     SerializeOutput(serde_json::Error),
-    RenderReport(serde_json::Error),
+    RenderReport(ReportRenderError),
     WriteOutput {
         path: PathBuf,
         source: std::io::Error,
@@ -207,9 +251,9 @@ impl Error for AppError {
         match self {
             Self::ConflictingOutputPaths(_) => None,
             Self::ReadInput { source, .. } | Self::WriteOutput { source, .. } => Some(source),
-            Self::ParseInput { source, .. }
-            | Self::SerializeOutput(source)
-            | Self::RenderReport(source) => Some(source),
+            Self::ParseInput { source, .. } => Some(source),
+            Self::SerializeOutput(source) => Some(source),
+            Self::RenderReport(source) => Some(source),
             Self::ValidateInput(source) => Some(source),
             Self::Solve(source) => Some(source),
             Self::ValidateSolution(source) => Some(source),

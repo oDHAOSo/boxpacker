@@ -94,3 +94,17 @@ fn template_inserts_user_visible_names_as_text() {
     assert!(!html.contains("innerHTML"));
     assert!(!html.contains("onclick="));
 }
+
+#[test]
+fn non_finite_report_geometry_is_rejected_with_its_field_path() {
+    let mut output: OutputData = serde_json::from_str(CURRENT_SAVED_OUTPUT)
+        .expect("current saved output fixture should deserialize");
+    output.containers[0].placed_items[0].coords.x = f64::NAN;
+
+    let error = render_html(&output).expect_err("non-finite report data should fail");
+
+    assert_eq!(
+        error.to_string(),
+        "containers[0].placed_items[0].coords.x must be finite and non-negative"
+    );
+}

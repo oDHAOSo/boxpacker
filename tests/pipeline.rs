@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use boxpacker::app::run;
+use boxpacker::app::{AppError, run};
 use boxpacker::cli::Cli;
 use boxpacker::compatibility::adapt_saved_solution;
 use boxpacker::model::{InputData, OutputData};
@@ -136,4 +136,106 @@ fn output_extension_cannot_make_json_and_html_share_a_path() {
 
     assert!(error.to_string().contains("resolve to the same file"));
     assert!(!output_path.exists());
+}
+
+#[test]
+fn malformed_json_reports_location_without_writing_artifacts() {
+    let directory = TestDirectory::new();
+    let input_path = directory.path().join("malformed.json");
+    let output_path = directory.path().join("packing.json");
+    let html_path = directory.path().join("packing.html");
+    fs::write(&input_path, "{\n  \"containers\": [\n").expect("malformed input should be writable");
+    let cli = Cli::try_parse_from([
+        "boxpacker",
+        "--input",
+        input_path.to_str().expect("temporary path should be UTF-8"),
+        "--output",
+        output_path
+            .to_str()
+            .expect("temporary path should be UTF-8"),
+    ])
+    .expect("test CLI should parse");
+
+    let error = run(&cli).expect_err("malformed input should fail");
+    let message = error.to_string();
+
+    assert!(matches!(error, AppError::ParseInput { .. }));
+    assert!(message.contains(&input_path.display().to_string()));
+    assert!(message.contains("line 3 column 0"));
+    assert!(!output_path.exists());
+    assert!(!html_path.exists());
+}
+
+#[test]
+fn wrong_json_type_reports_the_exact_document_path() {
+    let directory = TestDirectory::new();
+    let input_path = directory.path().join("wrong-type.json");
+    let output_path = directory.path().join("packing.json");
+    let html_path = directory.path().join("packing.html");
+    let input = r#"{
+        "containers": [
+            {"name": "box", "width": 10, "length": 10, "height": 10}
+        ],
+        "contents": [
+            {"name": "item", "width": 1, "length": 1, "height": "high"}
+        ]
+    }"#;
+    fs::write(&input_path, input).expect("wrong-type input should be writable");
+    let cli = Cli::try_parse_from([
+        "boxpacker",
+        "--input",
+        input_path.to_str().expect("temporary path should be UTF-8"),
+        "--output",
+        output_path
+            .to_str()
+            .expect("temporary path should be UTF-8"),
+    ])
+    .expect("test CLI should parse");
+
+    let error = run(&cli).expect_err("wrong-type input should fail");
+    let message = error.to_string();
+
+    assert!(matches!(error, AppError::ParseInput { .. }));
+    assert!(message.contains("at contents[0].height"));
+    assert!(message.contains("invalid type: string"));
+    assert!(!output_path.exists());
+    assert!(!html_path.exists());
+}
+
+#[test]
+fn invalid_dimensions_report_every_field_without_writing_artifacts() {
+    let directory = TestDirectory::new();
+    let input_path = directory.path().join("invalid-dimensions.json");
+    let output_path = directory.path().join("packing.json");
+    let html_path = directory.path().join("packing.html");
+    let input = r#"{
+        "containers": [
+            {"name": "box", "width": 0, "length": 1.25, "height": 10}
+        ],
+        "contents": [
+            {"name": "item", "width": 1, "length": -2, "height": 1}
+        ]
+    }"#;
+    fs::write(&input_path, input).expect("invalid input should be writable");
+    let cli = Cli::try_parse_from([
+        "boxpacker",
+        "--input",
+        input_path.to_str().expect("temporary path should be UTF-8"),
+        "--output",
+        output_path
+            .to_str()
+            .expect("temporary path should be UTF-8"),
+    ])
+    .expect("test CLI should parse");
+
+    let error = run(&cli).expect_err("invalid dimensions should fail");
+    let message = error.to_string();
+
+    assert!(matches!(error, AppError::ValidateInput(_)));
+    assert!(message.contains("containers[0].width"));
+    assert!(message.contains("containers[0].length"));
+    assert!(message.contains("contents[0].length"));
+    assert!(message.contains("3 error(s)"));
+    assert!(!output_path.exists());
+    assert!(!html_path.exists());
 }
