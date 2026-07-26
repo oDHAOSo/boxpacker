@@ -1,0 +1,690 @@
+{
+  "containers": [
+    {
+      "name": "AmiAmi Low",
+      "width": 59.5,
+      "length": 41.5,
+      "height": 18.0,
+      "placed_items": [
+        {
+          "name": "Mikasa",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 27.5,
+            "l": 31.0,
+            "h": 18.0
+          },
+          "color": "#4dff4d"
+        },
+        {
+          "name": "Ryougi Knife",
+          "coords": {
+            "x": 27.5,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 24.0,
+            "l": 29.2,
+            "h": 18.0
+          },
+          "color": "#4d79ff"
+        },
+        {
+          "name": "Dizzy",
+          "coords": {
+            "x": 27.5,
+            "y": 29.5,
+            "z": 0.0,
+            "w": 20.0,
+            "l": 9.2,
+            "h": 18.0
+          },
+          "color": "#9933ff"
+        },
+        {
+          "name": "Tanya",
+          "coords": {
+            "x": 0.0,
+            "y": 31.0,
+            "z": 0.0,
+            "w": 21.2,
+            "l": 8.2,
+            "h": 17.8
+          },
+          "color": "#4dff4d"
+        }
+      ]
+    },
+    {
+      "name": "AmiAmi Med",
+      "width": 36.5,
+      "length": 53.5,
+      "height": 29.8,
+      "placed_items": [
+        {
+          "name": "Mu12 alter",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 30.0,
+            "l": 33.0,
+            "h": 29.0
+          },
+          "color": "#4d79ff"
+        },
+        {
+          "name": "Clalaclan",
+          "coords": {
+            "x": 0.0,
+            "y": 33.0,
+            "z": 0.0,
+            "w": 30.2,
+            "l": 20.2,
+            "h": 28.8
+          },
+          "color": "#4d79ff"
+        }
+      ]
+    },
+    {
+      "name": "Canadian Tire",
+      "width": 45.2,
+      "length": 45.8,
+      "height": 61.5,
+      "placed_items": [
+        {
+          "name": "Arc Aniplex",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 43.0,
+            "l": 36.2,
+            "h": 32.2
+          },
+          "color": "#ff4d4d"
+        },
+        {
+          "name": "Mu12 goodsmile",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 32.5,
+            "w": 35.8,
+            "l": 30.2,
+            "h": 23.2
+          },
+          "color": "#4dff4d"
+        },
+        {
+          "name": "Yukari",
+          "coords": {
+            "x": 0.0,
+            "y": 30.5,
+            "z": 32.5,
+            "w": 30.8,
+            "l": 14.0,
+            "h": 26.0
+          },
+          "color": "#4dffff"
+        },
+        {
+          "name": "Medaka",
+          "coords": {
+            "x": 31.0,
+            "y": 30.5,
+            "z": 32.5,
+            "w": 14.2,
+            "l": 14.2,
+            "h": 26.2
+          },
+          "color": "#ff4d4d"
+        },
+        {
+          "name": "Yukari Nendroid",
+          "coords": {
+            "x": 0.0,
+            "y": 36.5,
+            "z": 0.0,
+            "w": 21.2,
+            "l": 8.2,
+            "h": 20.2
+          },
+          "color": "#4dffff"
+        },
+        {
+          "name": "Sakura Nendroid",
+          "coords": {
+            "x": 21.5,
+            "y": 36.5,
+            "z": 0.0,
+            "w": 21.0,
+            "l": 8.2,
+            "h": 20.0
+          },
+          "color": "#ff8c1a"
+        },
+        {
+          "name": "Megaman",
+          "coords": {
+            "x": 36.0,
+            "y": 0.0,
+            "z": 32.5,
+            "w": 8.2,
+            "l": 21.2,
+            "h": 17.5
+          },
+          "color": "#ffdb4d"
+        }
+      ]
+    },
+    {
+      "name": "Uhaul1",
+      "width": 60.0,
+      "length": 46.0,
+      "height": 61.0,
+      "placed_items": [
+        {
+          "name": "KOSMOS RE",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 36.0,
+            "l": 30.0,
+            "h": 20.5
+          },
+          "color": "#ffdb4d"
+        },
+        {
+          "name": "Peguindrum",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 20.5,
+            "w": 27.2,
+            "l": 29.0,
+            "h": 27.0
+          },
+          "color": "#ff4dff"
+        },
+        {
+          "name": "Roselinde",
+          "coords": {
+            "x": 36.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 23.0,
+            "l": 30.0,
+            "h": 28.0
+          },
+          "color": "#4dffff"
+        },
+        {
+          "name": "Excela",
+          "coords": {
+            "x": 27.5,
+            "y": 0.0,
+            "z": 28.0,
+            "w": 27.2,
+            "l": 29.0,
+            "h": 24.2
+          },
+          "color": "#ff8c1a"
+        },
+        {
+          "name": "Makoto",
+          "coords": {
+            "x": 0.0,
+            "y": 29.0,
+            "z": 20.5,
+            "w": 29.2,
+            "l": 16.2,
+            "h": 25.0
+          },
+          "color": "#ffdb4d"
+        },
+        {
+          "name": "Gravity Kitten",
+          "coords": {
+            "x": 29.5,
+            "y": 30.0,
+            "z": 0.0,
+            "w": 29.8,
+            "l": 15.0,
+            "h": 24.5
+          },
+          "color": "#ff8c1a"
+        },
+        {
+          "name": "KOSMOS mk4 poseable",
+          "coords": {
+            "x": 29.5,
+            "y": 30.0,
+            "z": 24.5,
+            "w": 24.5,
+            "l": 12.5,
+            "h": 34.0
+          },
+          "color": "#9933ff"
+        },
+        {
+          "name": "White Shroud",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 47.5,
+            "w": 21.2,
+            "l": 25.8,
+            "h": 13.2
+          },
+          "color": "#ffdb4d"
+        },
+        {
+          "name": "Arsene",
+          "coords": {
+            "x": 0.0,
+            "y": 30.0,
+            "z": 0.0,
+            "w": 26.2,
+            "l": 13.5,
+            "h": 18.0
+          },
+          "color": "#ff4dff"
+        },
+        {
+          "name": "Maxima",
+          "coords": {
+            "x": 0.0,
+            "y": 29.0,
+            "z": 45.5,
+            "w": 27.2,
+            "l": 16.2,
+            "h": 13.2
+          },
+          "color": "#4dffff"
+        }
+      ]
+    },
+    {
+      "name": "Uhaul2",
+      "width": 60.0,
+      "length": 46.0,
+      "height": 61.0,
+      "placed_items": [
+        {
+          "name": "Pyra",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 30.0,
+            "l": 32.0,
+            "h": 18.5
+          },
+          "color": "#9933ff"
+        },
+        {
+          "name": "Mythra",
+          "coords": {
+            "x": 30.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 30.0,
+            "l": 32.0,
+            "h": 18.5
+          },
+          "color": "#ff4d4d"
+        },
+        {
+          "name": "Monogatari",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 18.5,
+            "w": 26.0,
+            "l": 25.2,
+            "h": 23.2
+          },
+          "color": "#ffdb4d"
+        },
+        {
+          "name": "Rixia",
+          "coords": {
+            "x": 26.0,
+            "y": 0.0,
+            "z": 18.5,
+            "w": 24.2,
+            "l": 25.2,
+            "h": 24.2
+          },
+          "color": "#ff4dff"
+        },
+        {
+          "name": "Rouna",
+          "coords": {
+            "x": 0.0,
+            "y": 25.5,
+            "z": 18.5,
+            "w": 30.0,
+            "l": 20.2,
+            "h": 22.0
+          },
+          "color": "#9933ff"
+        },
+        {
+          "name": "Estelle",
+          "coords": {
+            "x": 30.0,
+            "y": 25.5,
+            "z": 18.5,
+            "w": 26.2,
+            "l": 20.2,
+            "h": 24.0
+          },
+          "color": "#ff4d4d"
+        },
+        {
+          "name": "KOSMOS mk4",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 42.0,
+            "w": 23.5,
+            "l": 26.0,
+            "h": 18.8
+          },
+          "color": "#ff4dff"
+        },
+        {
+          "name": "KOSMOS swimsuit",
+          "coords": {
+            "x": 0.0,
+            "y": 26.0,
+            "z": 42.5,
+            "w": 37.2,
+            "l": 18.0,
+            "h": 15.2
+          },
+          "color": "#ff4d4d"
+        },
+        {
+          "name": "Cloche",
+          "coords": {
+            "x": 23.5,
+            "y": 0.0,
+            "z": 43.0,
+            "w": 29.2,
+            "l": 20.0,
+            "h": 17.3
+          },
+          "color": "#4dff4d"
+        },
+        {
+          "name": "Arc Yujin",
+          "coords": {
+            "x": 37.5,
+            "y": 20.0,
+            "z": 43.0,
+            "w": 19.0,
+            "l": 24.8,
+            "h": 16.8
+          },
+          "color": "#ff4d4d"
+        },
+        {
+          "name": "Xiaomei",
+          "coords": {
+            "x": 0.0,
+            "y": 32.0,
+            "z": 0.0,
+            "w": 30.2,
+            "l": 12.2,
+            "h": 14.2
+          },
+          "color": "#4d79ff"
+        },
+        {
+          "name": "2B",
+          "coords": {
+            "x": 30.5,
+            "y": 32.0,
+            "z": 0.0,
+            "w": 20.8,
+            "l": 14.0,
+            "h": 15.2
+          },
+          "color": "#ffdb4d"
+        }
+      ]
+    },
+    {
+      "name": "Uhaul3",
+      "width": 60.0,
+      "length": 46.0,
+      "height": 61.0,
+      "placed_items": [
+        {
+          "name": "Mai Natsume",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 22.5,
+            "l": 30.0,
+            "h": 21.5
+          },
+          "color": "#4dffff"
+        },
+        {
+          "name": "Atago",
+          "coords": {
+            "x": 22.5,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 23.2,
+            "l": 28.2,
+            "h": 21.2
+          },
+          "color": "#ff8c1a"
+        },
+        {
+          "name": "Joshua",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 21.5,
+            "w": 21.2,
+            "l": 29.2,
+            "h": 20.0
+          },
+          "color": "#4dff4d"
+        },
+        {
+          "name": "Kureha",
+          "coords": {
+            "x": 21.5,
+            "y": 0.0,
+            "z": 21.5,
+            "w": 20.2,
+            "l": 26.2,
+            "h": 19.2
+          },
+          "color": "#4d79ff"
+        },
+        {
+          "name": "Haruka",
+          "coords": {
+            "x": 22.5,
+            "y": 28.5,
+            "z": 0.0,
+            "w": 28.2,
+            "l": 14.5,
+            "h": 24.2
+          },
+          "color": "#ffdb4d"
+        },
+        {
+          "name": "Momohime",
+          "coords": {
+            "x": 42.0,
+            "y": 0.0,
+            "z": 21.5,
+            "w": 16.2,
+            "l": 27.2,
+            "h": 22.0
+          },
+          "color": "#ff4dff"
+        },
+        {
+          "name": "Ryza",
+          "coords": {
+            "x": 0.0,
+            "y": 30.0,
+            "z": 0.0,
+            "w": 20.0,
+            "l": 14.2,
+            "h": 30.0
+          },
+          "color": "#4dffff"
+        },
+        {
+          "name": "Gene",
+          "coords": {
+            "x": 21.5,
+            "y": 26.5,
+            "z": 24.5,
+            "w": 17.2,
+            "l": 18.0,
+            "h": 26.2
+          },
+          "color": "#ff8c1a"
+        },
+        {
+          "name": "Matoi",
+          "coords": {
+            "x": 39.0,
+            "y": 27.5,
+            "z": 24.5,
+            "w": 17.2,
+            "l": 18.0,
+            "h": 26.2
+          },
+          "color": "#9933ff"
+        },
+        {
+          "name": "Luca",
+          "coords": {
+            "x": 21.5,
+            "y": 0.0,
+            "z": 41.0,
+            "w": 18.0,
+            "l": 23.5,
+            "h": 18.0
+          },
+          "color": "#4d79ff"
+        },
+        {
+          "name": "Milia",
+          "coords": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 41.5,
+            "w": 17.2,
+            "l": 25.5,
+            "h": 17.0
+          },
+          "color": "#4dff4d"
+        },
+        {
+          "name": "Blanc Neige",
+          "coords": {
+            "x": 0.0,
+            "y": 29.5,
+            "z": 30.0,
+            "w": 15.2,
+            "l": 15.2,
+            "h": 24.2
+          },
+          "color": "#ff8c1a"
+        },
+        {
+          "name": "Ryougi Arc Drive",
+          "coords": {
+            "x": 39.5,
+            "y": 0.0,
+            "z": 43.5,
+            "w": 15.0,
+            "l": 24.2,
+            "h": 15.0
+          },
+          "color": "#9933ff"
+        },
+        {
+          "name": "Clalaclan Maid",
+          "coords": {
+            "x": 46.0,
+            "y": 0.0,
+            "z": 0.0,
+            "w": 13.0,
+            "l": 24.5,
+            "h": 12.2
+          },
+          "color": "#ff4dff"
+        }
+      ]
+    }
+  ],
+  "unplaced_items": [
+    {
+      "name": "Black Magician Girl",
+      "width": 14.2,
+      "length": 14.2,
+      "height": 23.0
+    },
+    {
+      "name": "Hisui",
+      "width": 12.2,
+      "length": 12.2,
+      "height": 22.0
+    },
+    {
+      "name": "Arc Sega",
+      "width": 12.2,
+      "length": 12.2,
+      "height": 22.0
+    },
+    {
+      "name": "Slena",
+      "width": 15.0,
+      "length": 10.3,
+      "height": 19.3
+    },
+    {
+      "name": "Aleucia",
+      "width": 15.0,
+      "length": 10.3,
+      "height": 19.3
+    },
+    {
+      "name": "Kuruni",
+      "width": 15.0,
+      "length": 10.3,
+      "height": 19.3
+    },
+    {
+      "name": "Fissel",
+      "width": 15.0,
+      "length": 10.3,
+      "height": 19.3
+    },
+    {
+      "name": "Beryl",
+      "width": 15.0,
+      "length": 10.3,
+      "height": 19.3
+    }
+  ]
+}

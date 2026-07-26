@@ -1,8 +1,8 @@
 # BoxPacker Rewrite Plan
 
-Status: Milestone M0 is partially complete; the buildable blank Rust scaffold
-exists, but native `devenv test` still needs verification on a normally
-configured Nix host and on both target platforms.
+Status: Milestone M1 is in progress. The buildable Rust scaffold passes
+`devenv test` on ARM64 macOS and x86-64 Linux; M1 compatibility work has
+started with immutable current-input and saved-output fixtures.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -50,34 +50,77 @@ Before handing work to another agent:
 
 ### Current handoff snapshot — 2026-07-26
 
-- Current milestone: `M0 — scaffold and environment` (`IN PROGRESS`).
+- Current milestone: `M1 — compatibility shell and baseline` (`IN PROGRESS`).
+- Milestone M0 status: `DONE`; `devenv test` passed on both target platforms.
 - Git boundary: `boxpacker/` is its own Git repository on the `main` branch,
   independent from the old reference repository. Its parent is not a Git
   repository.
-- Completed: blank Cargo binary, devenv configuration and lock, README,
-  `.gitignore`, this implementation plan, and repository-level `AGENTS.md`
-  instructions that route future agents back to this handoff record.
-- Latest handoff changes: `REWRITE_PLAN.md` gained the resumable protocol,
-  current-state snapshot, decision register, stable task IDs, checkboxes, and
-  milestone evidence gates; `AGENTS.md` was added; `README.md` now identifies
-  the canonical handoff process. At the user's request, the new project was
-  initialized as an independent Git repository and given a baseline commit.
-- Verification passed using Rust 1.95.0 from the nixpkgs revision pinned by
-  `devenv.lock`: `cargo fmt --all --check`,
-  `cargo clippy --all-targets --all-features -- -D warnings`,
-  `cargo test --all-targets --all-features`, and `cargo run --quiet`.
-- Environment issue: on this machine, direct `devenv test` downloads and
-  validates the lock but stops during shell evaluation because the managed Nix
-  daemon rejects client settings (`system`, `always-allow-substitutes`, and
-  `http-connections`) for an untrusted user. Do not weaken the portable project
-  config to hide this host policy. Re-run on a normally configured Nix host.
-- Old-project state observed before scaffold work:
+- Completed before this handoff: blank Cargo binary, devenv configuration and
+  lock, README, `.gitignore`, this implementation plan, repository-level
+  `AGENTS.md`, and the independent Git repository baseline commit.
+- Completed in this handoff: `M0.5`, `M0.6`, and `M1.1`. The devenv input and
+  lock now include `oxalica/rust-overlay`, which the user confirmed is required
+  for `devenv shell`. The tracked old-project `input.json` and `output.json`
+  were copied byte-for-byte to `tests/fixtures/current/input.json` and
+  `tests/fixtures/current/saved_output.json`; a fixture README records their
+  provenance, counts, and SHA-256 digests. No old solver or scoring code was
+  copied.
+- Verification passed:
+  - `cmp` against both tracked old-project source files;
+  - `shasum -a 256` produced
+    `0bd68c67409195ae2d70369fcef1ceefc9978f31a3a3a91c56f6dba0fea06b37`
+    for `input.json` and
+    `2f6c48ac2051350654fe870bf77d8a6690bbf016ad485345a72f3168c4a9e5f8`
+    for `saved_output.json`;
+  - `jq empty` accepted both fixtures, and count queries confirmed 6
+    containers, 57 contents, 49 placed items, and 8 unplaced items;
+  - `devenv test` passed on ARM64 macOS with the locked environment;
+  - on an isolated x86-64 QEMU/Colima Linux guest, the official devenv
+    container image
+    `ghcr.io/cachix/devenv/devenv@sha256:383651824e46d75910bd66167b65067056f5c0d381c40c9d926112fe1b963d6b`
+    reported `x86_64 GNU/Linux`, then `devenv test --override-dotfile` passed
+    from an ephemeral copy of the new project using the same lock.
+- Environment note: the first sandboxed `devenv test` attempt could not connect
+  to `/nix/var/nix/daemon-socket/socket` and returned `Operation not permitted`.
+  The approved host execution passed, confirming this was sandbox isolation,
+  not a portable project-configuration or host Nix trust-policy failure.
+- Linux verification notes:
+  - `devenv test --system x86_64-linux` alone was insufficient on macOS:
+    evaluation and downloads succeeded, but the host could not execute the
+    Linux Bash builder and returned `Undefined error: 0`;
+  - rolling nixpkgs lacked a cached Colima/Lima build for this host, and its
+    Lima link failed with `Trace/BPT trap: 5`;
+  - Nix supplied cached Colima and Docker tooling from the `nixos-26.05`
+    branch. The dedicated `boxpacker-x86` VM was stopped after the successful
+    test. No portable project configuration was weakened for these
+    host/tooling issues.
+- Principal verification commands used in this handoff:
+
+  ```sh
+  cmp ../oldBoxPackerForDeletion/input.json tests/fixtures/current/input.json
+  cmp ../oldBoxPackerForDeletion/output.json tests/fixtures/current/saved_output.json
+  shasum -a 256 tests/fixtures/current/input.json tests/fixtures/current/saved_output.json
+  jq empty tests/fixtures/current/input.json tests/fixtures/current/saved_output.json
+  devenv test
+  devenv test --system x86_64-linux
+  nix shell github:NixOS/nixpkgs/nixos-26.05#colima github:NixOS/nixpkgs/nixos-26.05#docker-client --command colima start boxpacker-x86 --arch x86_64 --vm-type qemu --cpus 4 --memory 6 --disk 30 --runtime docker --mount /Users/greg/git/rust/BoxPacker/boxpacker:w --activate=false --ssh-config=false
+  nix shell github:NixOS/nixpkgs/nixos-26.05#docker-client --command docker --context colima-boxpacker-x86 run --rm --mount type=bind,src=/Users/greg/git/rust/BoxPacker/boxpacker,dst=/source,readonly ghcr.io/cachix/devenv/devenv:latest bash -lc 'set -eu; mkdir /tmp/boxpacker-workspace; cp /source/Cargo.toml /source/Cargo.lock /source/devenv.nix /source/devenv.yaml /source/devenv.lock /tmp/boxpacker-workspace/; cp -R /source/src /source/tests /tmp/boxpacker-workspace/; cd /tmp/boxpacker-workspace; uname -a; devenv test --override-dotfile'
+  nix shell github:NixOS/nixpkgs/nixos-26.05#colima --command colima stop boxpacker-x86
+  ```
+- Changed files in this handoff: `devenv.yaml`, `devenv.lock`,
+  `tests/fixtures/current/README.md`,
+  `tests/fixtures/current/input.json`,
+  `tests/fixtures/current/saved_output.json`, and `REWRITE_PLAN.md`.
+- Old-project state rechecked before implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. Treat all three as
-  user-owned.
+  user-owned. This handoff did not modify that repository.
 - Solver dependencies selected: none. Section 5.1's bake-off is mandatory.
-- Exact next task after environment/repository setup: `M1.1`, copy the current
-  input and saved output into new-project compatibility fixtures without
-  modifying the originals.
+- Decision register changes: none.
+- Remaining blockers: none for the current milestone. Automated
+  dual-platform CI remains planned as `M4.4`.
+- Exact next task: `M1.2`, port only the input/output DTOs and CLI contract,
+  using the new compatibility fixtures and preserving the documented module
+  boundaries.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -324,7 +367,7 @@ recorded separately from noisy wall-clock CI checks.
 
 ## 8. Implementation milestones
 
-### M0 — scaffold and environment (`IN PROGRESS`)
+### M0 — scaffold and environment (`DONE`)
 
 - [x] `M0.1` Create this standalone Cargo project beside the old project.
 - [x] `M0.2` Add the architecture-neutral devenv Rust environment and lock.
@@ -332,17 +375,17 @@ recorded separately from noisy wall-clock CI checks.
   toolchain.
 - [x] `M0.4` Initialize this folder as its own Git repository on `main` and make
   a baseline commit without touching the old repository.
-- [ ] `M0.5` Pass `devenv test` on ARM64 macOS without the current host's Nix
+- [x] `M0.5` Pass `devenv test` on ARM64 macOS without the current host's Nix
   trust-policy failure.
-- [ ] `M0.6` Pass `devenv test` on x86-64 Linux.
+- [x] `M0.6` Pass `devenv test` on x86-64 Linux.
 
 Exit: the scaffold checks pass through devenv on both target platforms, or
 platform verification is delegated to an explicitly recorded CI task with the
 local host-policy limitation documented.
 
-### M1 — compatibility shell and baseline (`TODO`)
+### M1 — compatibility shell and baseline (`IN PROGRESS`)
 
-- [ ] `M1.1` Copy the current input and saved output into test fixtures; do not
+- [x] `M1.1` Copy the current input and saved output into test fixtures; do not
   modify the originals or import old solver code.
 - [ ] `M1.2` Port only the input/output DTOs and CLI contract.
 - [ ] `M1.3` Add exact integer conversion and field-specific input validation.
