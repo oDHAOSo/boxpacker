@@ -5,7 +5,9 @@ use std::time::{Duration, Instant};
 use crate::solution::Solution;
 use crate::validate::PackingInstance;
 
+pub mod bin_packing;
 pub mod constructive;
+pub mod u_nesting;
 
 /// Backend-independent solver entry point used by the bake-off and portfolio.
 pub trait SolverBackend: Send + Sync {

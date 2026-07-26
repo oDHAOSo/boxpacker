@@ -5,7 +5,8 @@ compatibility shell, exact geometry boundary, safe report, saved-solution
 adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
 are implemented; the event-based constructive baseline is independently valid
-and improves the saved fixture, and candidate library adapters are next.
+and improves the saved fixture, both candidate libraries are isolated behind
+the backend boundary, and the broader bake-off fixtures are next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -60,51 +61,60 @@ Before handing work to another agent:
 - Git boundary: `boxpacker/` is its own Git repository on the `main` branch,
   independent from the old reference repository. Its parent is not a Git
   repository.
-- Completed before this handoff: `M0`, all of `M1`, and `M2.1`. The
-  compatibility shell, exact geometry and independent-validation boundary,
-  backend-neutral solution contract, provisional objective, deadlines, and
-  metrics are present. No old solver or scoring code was copied.
-- Completed in this handoff: `M2.2`.
-  - `ConstructiveBackend` is a clean-room maximal-empty-space constructor
-    behind `SolverBackend`. It orders items deterministically, enumerates only
-    exact unique rotations, and places only at free-space origins derived from
-    container walls and prior item faces.
-  - Each placement splits intersecting free cuboids into face-derived residual
-    spaces; duplicate and contained spaces are pruned. Candidate deduplication
-    prevents equivalent free-space origins from being rescored.
-  - Checked candidate ranking prefers already-used containers, full support,
-    wall/item contact, compact bounding extent, residual space, low
-    fragmentation, and deterministic geometry/name tie-breaks.
-  - Deadline expiration returns a complete all-remaining-unplaced incumbent.
-    Every returned candidate is passed through the independent validator
-    before the backend reports heuristic status.
-  - The current fixture result is reproducible and independently valid:
-    53/57 items and 587,815.524 packed volume, improving the saved result's
-    49/57 and 582,885.612 without a raster step or solver dependency.
-  - Tests cover exact rotation deduplication, face-derived coordinate 6.3,
-    rotated fit, no-fit items, expired deadlines, free-space splitting and
-    dominance pruning, current-fixture reproducibility, independent validity,
-    and objective quality versus the saved baseline.
+- Completed before this handoff: `M0`, all of `M1`, and `M2.1` through
+  `M2.2`. The compatibility shell, exact independent validator, backend
+  contract, provisional objective, and clean-room constructive baseline are
+  present. No old solver or scoring code was copied.
+- Completed in this handoff: `M2.3`.
+  - Exact evaluation versions `bin-packing = 0.3.0` and
+    `u-nesting-d3 = 0.6.0` are locked. Default parallel features are disabled,
+    keeping thread behavior bounded and the dependency experiment portable.
+    This is an evaluation pin, not a D-005 selection.
+  - `BinPackingBackend` maps heterogeneous one-use container inventory and
+    stable item IDs into the dependency's integer multi-bin model, translates
+    its vertical/depth axes back to BoxPacker axes, preclassifies individually
+    infeasible items, and reports the dependency's 32,768-unit axis cap without
+    truncation. Dependency types do not cross the adapter.
+  - `UNestingBackend` compensates for the dependency's single-boundary API by
+    visiting each heterogeneous container once in deterministic order and
+    solving only remaining stable item instances. It passes scaled integers as
+    exactly representable `f64`, accepts only integral returned coordinates,
+    applies the dependency's orientation index locally, and independently
+    validates the combined result.
+  - Only deterministic `u-nesting-d3` strategies are exposed because its
+    randomized strategies have no seed in the shared 0.6 configuration.
+    Sequential per-container assignment and absent explored-state metrics are
+    recorded model-fit limitations for `M2.5`.
+  - `bin-packing` has native heterogeneous inventory and seed support but no
+    deadline option. Its adapter exposes contact-point, basic extreme-point,
+    and auto strategies without leaking dependency enums.
+  - Both adapters pass heterogeneous inventory, rotation, no-fit, stable-ID,
+    and exact independent validation tests. On the current fixture,
+    `bin-packing` contact-point places 41 items / 535,042.896 volume and
+    sequential `u-nesting-d3` extreme-point places 49 / 568,460.714; both trail
+    the clean-room 53 / 587,815.524 result, so neither candidate is selected.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
     and the debug build;
-  - `devenv shell -- cargo test --all-targets --all-features` reported 44
-    passing tests (5 unit and 39 integration), with no failures;
+  - `devenv shell -- cargo test --all-targets --all-features` reported 48
+    passing tests (5 unit and 43 integration), with no failures;
   - `devenv shell -- cargo clippy --all-targets --all-features -- -D warnings`
     passed;
-  - `devenv shell -- cargo test --test constructive` reported 5 passing
-    constructive-backend tests;
+  - `devenv shell -- cargo test --test candidate_adapters` reported 4 passing
+    cross-adapter tests;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
-- Development-test note: the focused constructive suite passed on its first
-  run and measured 53 placed items with 587,815.524 packed volume. That
-  evidence was promoted into an asserted objective comparison against the
-  independently validated saved baseline.
+- Development-test note: the first full test/Clippy run after replacing
+  temporary metric printing put the expected-value tuple on the wrong test
+  loop, producing two missing-variable and two unused-variable diagnostics.
+  The tuple was moved to the current-fixture loop; the focused suite and final
+  full checks then passed.
 - Environment note: host-authorized devenv was used because the prior handoff
   established that the sandbox cannot open the user Nix cache or connect to
   `/nix/var/nix/daemon-socket/socket` (`Operation not permitted`). No portable
-  project configuration was changed.
+  project configuration was changed. Cargo network access downloaded the two
+  exact candidate versions and their locked transitive dependencies.
 - Prior cross-platform evidence remains valid: `devenv test` passed on native
   ARM64 macOS and in an isolated x86-64 QEMU/Colima Linux guest using the same
   lock. Automated dual-platform CI remains `M4.4`.
@@ -112,26 +122,26 @@ Before handing work to another agent:
 
   ```sh
   devenv test
-  devenv shell -- cargo test --test constructive
+  devenv shell -- cargo test --test candidate_adapters
   devenv shell -- cargo test --all-targets --all-features
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
-- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`,
-  `src/geometry.rs`, `src/solver/constructive.rs`, `src/solver/mod.rs`,
-  `tests/constructive.rs`, and `tests/geometry_properties.rs`.
+- Changed files in this handoff: `Cargo.lock`, `Cargo.toml`, `README.md`,
+  `REWRITE_PLAN.md`, `src/solver/bin_packing.rs`, `src/solver/mod.rs`,
+  `src/solver/u_nesting.rs`, and `tests/candidate_adapters.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. Section 5.1's bake-off is mandatory.
 - Decision register changes: none.
-- Remaining blockers: none for `M2.3`. Automated dual-platform CI remains
+- Remaining blockers: none for `M2.4`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M2.3`, adapt each viable `bin-packing` and `u-nesting-d3`
-  candidate behind `SolverBackend` without leaking dependency types. Preserve
-  independent validation and collect any API or model-fit blockers as bake-off
-  evidence; do not select a dependency yet.
+- Exact next task: `M2.4`, add small known-answer, adversarial, current,
+  input-permutation, and generated 8-container/77-item fixtures. Run every
+  viable backend through independent validation and record objective values;
+  keep deadline-performance judgments for `M2.5`.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -412,7 +422,7 @@ Exit: existing input produces compatible JSON/HTML from a validated fixture.
 - [x] `M2.1` Implement the domain-level `SolverBackend` interface, objective,
   deadlines, metrics, and independent solution validator.
 - [x] `M2.2` Implement the event-based constructive baseline.
-- [ ] `M2.3` Adapt each viable library candidate without leaking its types past
+- [x] `M2.3` Adapt each viable library candidate without leaking its types past
   the backend boundary.
 - [ ] `M2.4` Add small known-answer, adversarial, current, permutation, and 8/77
   fixtures.

@@ -17,8 +17,9 @@ and bake-off. Backend-neutral solutions, deadlines, common metrics, provisional
 lexicographic objectives, and independent exact validation are present; the
 clean-room event-based constructive backend now produces a deterministic,
 independently valid result that improves the saved fixture baseline. Candidate
-library adapters and the measured bake-off remain in progress. The proposed
-implementation and acceptance criteria are in
+library adapters are isolated behind the same backend trait, but neither has
+been selected; the broader adversarial, permutation, and scale fixture suite is
+next. The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 
 `REWRITE_PLAN.md` is also the canonical AI handoff record. Continuing agents
