@@ -250,6 +250,76 @@ fn find_best_candidate(
     Ok(best)
 }
 
+pub(super) fn event_placements(
+    instance: &PackingInstance,
+    placements: &[Placement],
+    item_id: ItemId,
+    request: &SolveRequest,
+    explored_candidates: &mut u64,
+) -> Result<Vec<Placement>, SolverError> {
+    let mut states = instance
+        .containers()
+        .iter()
+        .map(|container| ContainerState::new(container.id(), container.dimensions()))
+        .collect::<Vec<_>>();
+    for placement in placements {
+        states[placement.container_id().index()].place(*placement)?;
+    }
+
+    let dimensions = instance.items()[item_id.index()].dimensions();
+    let rotations = dimensions.unique_rotations();
+    let mut candidates = Vec::new();
+    for state in &states {
+        let mut seen = BTreeSet::new();
+        for space in &state.spaces {
+            for rotation in &rotations {
+                if request.should_stop() {
+                    return Ok(candidates);
+                }
+                *explored_candidates = explored_candidates
+                    .checked_add(1)
+                    .ok_or_else(|| SolverError::new("explored-candidate metric overflowed"))?;
+                if !space.fits(*rotation) {
+                    continue;
+                }
+                let bounds = space.bounds_at_origin(*rotation);
+                let signature = (
+                    state.container_id,
+                    bounds.origin().x().get(),
+                    bounds.origin().y().get(),
+                    bounds.origin().z().get(),
+                    rotation.width().get(),
+                    rotation.length().get(),
+                    rotation.height().get(),
+                );
+                if !seen.insert(signature)
+                    || state
+                        .placements
+                        .iter()
+                        .any(|placement| bounds_overlap(bounds, placement.bounds()))
+                {
+                    continue;
+                }
+                candidates.push(Placement::new(state.container_id, item_id, bounds));
+            }
+        }
+    }
+    candidates.sort_unstable_by_key(|placement| {
+        let origin = placement.bounds().origin();
+        let dimensions = placement.bounds().dimensions();
+        (
+            placement.container_id(),
+            origin.z().get(),
+            origin.y().get(),
+            origin.x().get(),
+            dimensions.height().get(),
+            dimensions.length().get(),
+            dimensions.width().get(),
+        )
+    });
+    Ok(candidates)
+}
+
 fn candidate_score(
     instance: &PackingInstance,
     state: &ContainerState,

@@ -7,6 +7,7 @@ use std::time::Instant;
 use crate::objective::ObjectiveValue;
 use crate::solution::Solution;
 use crate::solver::constructive::{ItemOrder, solve_with_item_order, solve_with_plan};
+use crate::solver::exact::{RepairConfig, repair_residual};
 use crate::solver::improve::{NeighborhoodKind, neighborhood_plan};
 use crate::solver::{
     OptimalityStatus, SolveRequest, SolverBackend, SolverError, SolverMetrics, SolverOutcome,
@@ -54,6 +55,34 @@ impl SolverBackend for PortfolioBackend {
         let canonical = solve_work(instance, request, plan.canonical.strategy)?;
         incumbent.publish(plan.canonical.index, canonical)?;
         execute_partitions(instance, request, plan.partitions, Arc::clone(&incumbent))?;
+
+        let snapshot = incumbent.snapshot()?;
+        if !request.should_stop()
+            && let Some(repair) = repair_residual(
+                instance,
+                &snapshot.solution,
+                request,
+                RepairConfig::default(),
+            )?
+        {
+            let repair_metrics = SolverMetrics::new(
+                repair
+                    .explored_candidates()
+                    .checked_add(repair.explored_nodes())
+                    .ok_or_else(|| SolverError::new("repair metric overflowed"))?,
+                1,
+                u64::from(repair.solution() != &snapshot.solution),
+                started_at.elapsed(),
+            );
+            incumbent.publish(
+                self.work_units.get(),
+                SolverOutcome::new(
+                    repair.solution().clone(),
+                    repair_metrics,
+                    OptimalityStatus::Heuristic,
+                ),
+            )?;
+        }
 
         let snapshot = incumbent.snapshot()?;
         Ok(SolverOutcome::new(

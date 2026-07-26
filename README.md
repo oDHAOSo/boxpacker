@@ -37,7 +37,11 @@ now present as deterministic move, swap, forced-rotation, three-item
 ejection-chain, and ruin/recreate construction-plan transformations. Every
 transformed plan rebuilds through exact geometry and must pass the shared
 validator before it can improve the incumbent. Bounded exact repair for small
-residuals is next.
+residuals now freezes the validated incumbent placements, branches over
+place/unplaced choices and every unique rotation at maximal-space face events,
+and prunes on unattainable volume/count bounds. Its exhaustion flag applies
+only to that bounded residual subproblem; overall solver status remains
+heuristic. Structured progress and metrics are next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

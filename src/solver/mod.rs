@@ -8,6 +8,7 @@ use crate::solution::Solution;
 use crate::validate::PackingInstance;
 
 pub mod constructive;
+pub mod exact;
 pub mod improve;
 pub mod portfolio;
 

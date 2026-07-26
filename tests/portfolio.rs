@@ -41,8 +41,8 @@ fn fixed_seed_portfolio_is_reproducible_across_thread_counts() {
 
     assert_eq!(serial.solution(), parallel.solution());
     assert_eq!(parallel.solution(), repeated.solution());
-    assert_eq!(serial.metrics().validated_candidates(), 8);
-    assert_eq!(parallel.metrics().validated_candidates(), 8);
+    assert_eq!(serial.metrics().validated_candidates(), 9);
+    assert_eq!(parallel.metrics().validated_candidates(), 9);
     validate_solution(&instance, serial.solution())
         .expect("selected portfolio solution should validate");
 }
@@ -93,7 +93,7 @@ fn neighborhood_portfolio_retains_or_improves_the_scale_incumbent() {
         portfolio_summary.placed_item_count() + portfolio_summary.unplaced_item_count(),
         77
     );
-    assert_eq!(portfolio.metrics().validated_candidates(), 8);
+    assert_eq!(portfolio.metrics().validated_candidates(), 9);
 }
 
 #[test]
