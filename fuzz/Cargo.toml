@@ -1,0 +1,27 @@
+[package]
+name = "boxpacker-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+boxpacker = { path = ".." }
+libfuzzer-sys = "=0.4.13"
+serde_json = "1.0"
+
+[[bin]]
+name = "json_input"
+path = "fuzz_targets/json_input.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "small_instances"
+path = "fuzz_targets/small_instances.rs"
+test = false
+doc = false
+bench = false

@@ -491,3 +491,145 @@ fn backend_contract_is_object_safe_and_reports_common_metrics() {
     assert!(outcome.metrics().elapsed() <= request.deadline().elapsed());
     assert_eq!(summary.unplaced_item_count(), 1);
 }
+
+#[test]
+fn bounded_randomized_valid_solutions_survive_reordering_and_detect_overlap() {
+    let mut generator = TestGenerator::new(0x19b4_56f2_a77c_d301);
+
+    for _case in 0..512 {
+        let item_count = 2 + generator.range(5);
+        let item_scaled_dimensions = (0..item_count)
+            .map(|_| {
+                [
+                    generator.scaled_length(20),
+                    generator.scaled_length(20),
+                    generator.scaled_length(20),
+                ]
+            })
+            .collect::<Vec<_>>();
+        let container_scaled_width = item_scaled_dimensions
+            .iter()
+            .map(|dimensions| dimensions[0])
+            .sum::<u64>();
+        let container_scaled_length = item_scaled_dimensions
+            .iter()
+            .map(|dimensions| dimensions[1])
+            .max()
+            .expect("generated item set is non-empty");
+        let container_scaled_height = item_scaled_dimensions
+            .iter()
+            .map(|dimensions| dimensions[2])
+            .max()
+            .expect("generated item set is non-empty");
+        let item_dimensions = item_scaled_dimensions
+            .iter()
+            .map(|dimensions| {
+                [
+                    to_input_length(dimensions[0]),
+                    to_input_length(dimensions[1]),
+                    to_input_length(dimensions[2]),
+                ]
+            })
+            .collect::<Vec<_>>();
+        let instance = instance(
+            &[[
+                to_input_length(container_scaled_width),
+                to_input_length(container_scaled_length),
+                to_input_length(container_scaled_height),
+            ]],
+            &item_dimensions,
+        );
+
+        let mut scaled_x = 0_u64;
+        let placements = item_scaled_dimensions
+            .iter()
+            .enumerate()
+            .map(|(item_index, dimensions)| {
+                let placed = placement(
+                    &instance,
+                    0,
+                    item_index,
+                    exact_bounds(
+                        to_input_length(scaled_x),
+                        0.0,
+                        0.0,
+                        to_input_length(dimensions[0]),
+                        to_input_length(dimensions[1]),
+                        to_input_length(dimensions[2]),
+                    ),
+                );
+                scaled_x += dimensions[0];
+                placed
+            })
+            .collect::<Vec<_>>();
+        let valid = Solution::new(placements.clone(), Vec::new());
+        let valid_summary =
+            validate_solution(&instance, &valid).expect("generated shelf solution should validate");
+
+        let mut reversed = placements.clone();
+        reversed.reverse();
+        let reversed_summary = validate_solution(&instance, &Solution::new(reversed, Vec::new()))
+            .expect("placement order must not change validity");
+        assert_eq!(
+            ObjectiveValue::from_summary(&valid_summary),
+            ObjectiveValue::from_summary(&reversed_summary)
+        );
+        assert_eq!(valid_summary.placed_item_count(), item_count);
+        assert_eq!(valid_summary.unplaced_item_count(), 0);
+
+        let mut overlapping = placements;
+        let second_dimensions = item_dimensions[1];
+        overlapping[1] = placement(
+            &instance,
+            0,
+            1,
+            exact_bounds(
+                0.0,
+                0.0,
+                0.0,
+                second_dimensions[0],
+                second_dimensions[1],
+                second_dimensions[2],
+            ),
+        );
+        let errors = validate_solution(&instance, &Solution::new(overlapping, Vec::new()))
+            .expect_err("generated positive-volume overlap should fail");
+        assert!(
+            errors
+                .errors()
+                .iter()
+                .any(|error| matches!(error, SolutionValidationError::Overlap { .. }))
+        );
+    }
+}
+
+struct TestGenerator {
+    state: u64,
+}
+
+impl TestGenerator {
+    const fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
+
+    fn next(&mut self) -> u64 {
+        self.state = self.state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut value = self.state;
+        value = (value ^ (value >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        value = (value ^ (value >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        value ^ (value >> 31)
+    }
+
+    fn range(&mut self, upper: usize) -> usize {
+        usize::try_from(self.next() % u64::try_from(upper).expect("test range fits u64"))
+            .expect("bounded test value fits usize")
+    }
+
+    fn scaled_length(&mut self, max_scaled: u64) -> u64 {
+        1 + self.next() % max_scaled
+    }
+}
+
+fn to_input_length(scaled: u64) -> f64 {
+    scaled as f64 / 10.0
+}

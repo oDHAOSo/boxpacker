@@ -56,8 +56,13 @@ deadline. Malformed JSON now retains line/column context and identifies the
 exact DTO field path for shape errors; exact dimension validation still
 reports all bad fields together. Report rendering rejects invalid numeric data
 and template placeholder mistakes before producing HTML while retaining its
-script-safe JSON escaping. Property/fuzz coverage and release benchmarks are
-next.
+script-safe JSON escaping. Bounded properties now cover varied exact
+rotations, exhaustive cell preservation across randomized free-space splits,
+and randomized valid/invalid solution validation. An isolated nightly
+`cargo-fuzz` package contains seeded raw-JSON and small selected-portfolio
+targets without changing the stable production toolchain. Criterion records
+solve-plus-independent-validation performance for every production preset on
+both representative fixtures. Dual-platform CI is next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

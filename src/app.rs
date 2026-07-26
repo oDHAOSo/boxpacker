@@ -102,7 +102,7 @@ pub fn run(cli: &Cli) -> Result<RunSummary, AppError> {
         path: cli.input.clone(),
         source,
     })?;
-    let input = parse_input(&input_json).map_err(|source| AppError::ParseInput {
+    let input = parse_input_document(&input_json).map_err(|source| AppError::ParseInput {
         path: cli.input.clone(),
         source,
     })?;
@@ -138,7 +138,8 @@ pub fn run(cli: &Cli) -> Result<RunSummary, AppError> {
     })
 }
 
-fn parse_input(input_json: &str) -> Result<InputData, InputParseError> {
+/// Parse one compatibility input document with syntax and DTO-path context.
+pub fn parse_input_document(input_json: &str) -> Result<InputData, InputParseError> {
     let mut deserializer = serde_json::Deserializer::from_str(input_json);
     let input = serde_path_to_error::deserialize(&mut deserializer).map_err(|error| {
         let path = error.path().to_string();

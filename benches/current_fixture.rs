@@ -1,11 +1,13 @@
 use std::num::NonZeroUsize;
 use std::time::Duration;
 
+use boxpacker::app::SearchSettings;
+use boxpacker::cli::SearchPreset;
 use boxpacker::model::InputData;
 use boxpacker::solver::constructive::ConstructiveBackend;
 use boxpacker::solver::portfolio::PortfolioBackend;
 use boxpacker::solver::{SolveRequest, SolverBackend};
-use boxpacker::validate::PackingInstance;
+use boxpacker::validate::{PackingInstance, validate_solution};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 
 const CURRENT_INPUT: &str = include_str!("../tests/fixtures/current/input.json");
@@ -17,10 +19,27 @@ fn instance(json: &str) -> PackingInstance {
     PackingInstance::try_from(&input).expect("benchmark fixture should validate")
 }
 
-fn backends() -> Vec<Box<dyn SolverBackend>> {
+fn backends() -> Vec<(&'static str, Box<dyn SolverBackend>)> {
     vec![
-        Box::new(ConstructiveBackend),
-        Box::new(PortfolioBackend::default()),
+        ("constructive", Box::new(ConstructiveBackend)),
+        (
+            "fast",
+            Box::new(PortfolioBackend::new(
+                SearchSettings::for_preset(SearchPreset::Fast).work_units(),
+            )),
+        ),
+        (
+            "balanced",
+            Box::new(PortfolioBackend::new(
+                SearchSettings::for_preset(SearchPreset::Balanced).work_units(),
+            )),
+        ),
+        (
+            "thorough",
+            Box::new(PortfolioBackend::new(
+                SearchSettings::for_preset(SearchPreset::Thorough).work_units(),
+            )),
+        ),
     ]
 }
 
@@ -37,15 +56,17 @@ fn benchmark_fixture(criterion: &mut Criterion, fixture_name: &str, fixture: &Pa
     group.throughput(Throughput::Elements(
         u64::try_from(fixture.items().len()).expect("fixture item count should fit u64"),
     ));
-    for backend in backends() {
+    for (label, backend) in backends() {
         group.bench_with_input(
-            BenchmarkId::new("solve_and_validate", backend.name()),
+            BenchmarkId::new("solve_and_validate", label),
             fixture,
             |bencher, instance| {
                 bencher.iter(|| {
-                    backend
+                    let outcome = backend
                         .solve(instance, &request())
-                        .expect("benchmark backend should solve")
+                        .expect("benchmark backend should solve");
+                    validate_solution(instance, outcome.solution())
+                        .expect("benchmark solution should validate independently")
                 });
             },
         );

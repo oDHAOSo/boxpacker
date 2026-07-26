@@ -798,4 +798,68 @@ mod tests {
 
         assert_eq!(spaces, vec![outer]);
     }
+
+    #[test]
+    fn randomized_maximal_space_splits_preserve_every_unoccupied_cell() {
+        let mut generator = SplitMix64::new(0x4d34_2f19_8a77_c201);
+
+        for _case in 0..512 {
+            let width = 2 + generator.next() % 7;
+            let length = 2 + generator.next() % 7;
+            let height = 2 + generator.next() % 7;
+            let space = FreeSpace::container(dimensions(width, length, height));
+            let x_min = generator.next() % width;
+            let y_min = generator.next() % length;
+            let z_min = generator.next() % height;
+            let placed = Extents {
+                x_min,
+                x_max: x_min + 1 + generator.next() % (width - x_min),
+                y_min,
+                y_max: y_min + 1 + generator.next() % (length - y_min),
+                z_min,
+                z_max: z_min + 1 + generator.next() % (height - z_min),
+            };
+
+            let residuals = space.split_around(placed);
+
+            assert!(residuals.iter().all(|residual| space.contains(*residual)));
+            assert!(
+                residuals
+                    .iter()
+                    .all(|residual| !residual.intersects(placed))
+            );
+            for x in 0..width {
+                for y in 0..length {
+                    for z in 0..height {
+                        let occupied = contains_cell(placed, x, y, z);
+                        let retained = residuals
+                            .iter()
+                            .any(|space| contains_cell_in_space(*space, x, y, z));
+                        assert_eq!(
+                            retained, !occupied,
+                            "case lost or retained cell ({x}, {y}, {z})"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    const fn contains_cell(extents: Extents, x: u64, y: u64, z: u64) -> bool {
+        extents.x_min <= x
+            && x < extents.x_max
+            && extents.y_min <= y
+            && y < extents.y_max
+            && extents.z_min <= z
+            && z < extents.z_max
+    }
+
+    const fn contains_cell_in_space(space: FreeSpace, x: u64, y: u64, z: u64) -> bool {
+        space.x_min <= x
+            && x < space.x_max
+            && space.y_min <= y
+            && y < space.y_max
+            && space.z_min <= z
+            && z < space.z_max
+    }
 }

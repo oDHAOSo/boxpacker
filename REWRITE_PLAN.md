@@ -76,7 +76,7 @@ Before handing work to another agent:
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
 - Completed in this handoff: every task from `M2.5` through `M3.6`, plus
-  `M4.1` and `M4.2`.
+  `M4.1`, `M4.2`, and `M4.3`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -212,6 +212,27 @@ Before handing work to another agent:
     dimensions or negative coordinates with a compatibility field path before
     serialization. Existing script-ending, markup, arbitrary-name, and DOM
     text-insertion safety proofs still pass.
+  - Bounded deterministic properties now exercise 10,000 varied dimension
+    triples for exact rotation uniqueness/permutation/order, 512 randomized
+    maximal-space splits with exhaustive unit-cell preservation checks, and
+    512 randomized valid shelf solutions whose objective survives placement
+    reversal and whose injected positive overlap is rejected.
+  - An independent `fuzz/` package exact-pins `libfuzzer-sys` 0.4.13 without
+    adding it to the stable production graph. Seeded `json_input` and
+    `small_instances` targets exercise DTO-path parsing/exact conversion and
+    at most four-container/six-item selected-portfolio solves followed by
+    independent validation, compatibility serialization, and safe report
+    rendering.
+  - Both fuzz targets compile and pass warnings-denied Clippy under the locked
+    stable environment. Seed-based direct libFuzzer smoke runs completed 1,000
+    inputs per target without a crash. Those smoke runs explicitly warned that
+    sanitizer symbols and coverage instrumentation were absent; a proper
+    nightly `cargo-fuzz` sanitizer campaign remains a recorded verification
+    gap rather than being hidden by changing the stable project toolchain.
+  - Criterion now measures constructive plus fast, balanced, and thorough
+    portfolio presets and independently validates every result. Native ARM64
+    current-fixture means are 555.26 µs, 839.48 µs, 2.4512 ms, and 3.8603 ms;
+    8/77 means are 815.17 µs, 1.0475 ms, 3.2945 ms, and 5.4898 ms.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -303,6 +324,23 @@ Before handing work to another agent:
     the exact 0.1.20 diagnostic dependency and its small normal graph;
   - the M4.2 format check, strict Clippy run, release build, and final
     host-authorized `devenv test` gate passed;
+  - after M4.3,
+    `devenv shell -- cargo test --all-targets --all-features` reported 80
+    passing tests (18 unit and 62 integration), with no failures;
+  - the first randomized solution-property run exposed test-only float
+    accumulation as `OverPrecision`; the generator was corrected to accumulate
+    scaled integers, and the focused and full reruns passed;
+  - `devenv shell -- cargo check --manifest-path fuzz/Cargo.toml --all-targets`
+    compiled both exact-pinned fuzz targets;
+  - direct seed-based `cargo run` smoke campaigns completed 1,000 inputs for
+    each fuzz target without a crash, with the missing sanitizer/coverage
+    instrumentation warning recorded above;
+  - root and fuzz-package warnings-denied Clippy runs passed;
+  - `devenv shell -- cargo bench --bench current_fixture -- --noplot`
+    completed all eight release benchmark groups with the point estimates
+    recorded above;
+  - the M4.3 format check, release build, and final host-authorized
+    `devenv test` gate passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -332,8 +370,14 @@ Before handing work to another agent:
   devenv shell -- cargo test --test portfolio
   devenv shell -- cargo test --test pipeline
   devenv shell -- cargo test --test report
+  devenv shell -- cargo test --test geometry_properties
+  devenv shell -- cargo test --test solution_properties
   devenv shell -- cargo test --all-targets --all-features
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
+  devenv shell -- cargo check --manifest-path fuzz/Cargo.toml --all-targets
+  devenv shell -- cargo clippy --manifest-path fuzz/Cargo.toml --all-targets -- -D warnings
+  devenv shell -- cargo run --manifest-path fuzz/Cargo.toml --bin json_input -- fuzz/seeds/json_input -runs=1000
+  devenv shell -- cargo run --manifest-path fuzz/Cargo.toml --bin small_instances -- fuzz/seeds/small_instances -runs=1000
   devenv shell -- cargo bench --bench current_fixture -- --noplot
   devenv shell -- cargo build --release
   devenv shell -- cargo tree -p bin-packing -e normal
@@ -373,16 +417,23 @@ Before handing work to another agent:
 - Changed files in M4.2: `Cargo.lock`, `Cargo.toml`, `README.md`,
   `REWRITE_PLAN.md`, `src/app.rs`, `src/report/mod.rs`, `tests/pipeline.rs`,
   and `tests/report.rs`.
+- Changed files in M4.3: `.gitignore`, `README.md`, `REWRITE_PLAN.md`,
+  `benches/current_fixture.rs`, `fuzz/Cargo.lock`, `fuzz/Cargo.toml`,
+  `fuzz/README.md`, both `fuzz/fuzz_targets/` targets, both `fuzz/seeds/`
+  inputs, `src/app.rs`, `src/solver/constructive.rs`,
+  `tests/geometry_properties.rs`, and `tests/solution_properties.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
-- Decision register changes: D-005 and D-008 are now `LOCKED`.
-- Remaining blockers: none for `M4.3`. Automated dual-platform CI remains
-  planned as `M4.4`.
-- Exact next task: `M4.3`, complete missing property tests and bounded fuzz
-  targets, then record release benchmarks for the current and 8/77 fixtures.
+- Decision register changes: D-005, D-008, and D-009 are now `LOCKED`.
+- Remaining blockers: none for `M4.4`. A sanitizer/coverage-instrumented
+  nightly fuzz campaign remains open, and automated dual-platform CI is the
+  next task.
+- Exact next task: `M4.4`, add automated formatting, strict Clippy, tests, and
+  release builds for ARM64 macOS and x86-64 Linux without coupling fuzz-only
+  nightly tooling to the stable production gate.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -400,6 +451,7 @@ Before handing work to another agent:
 | D-006 | DEFERRED | Add native MILP/CP-SAT only if measured quality justifies its portability cost. |
 | D-007 | LOCKED | Keep `boxpacker/` as its own Git repository on `main`, separate from the old reference repository. |
 | D-008 | LOCKED | Use exact-pinned `serde_path_to_error` only at the compatibility-input boundary for actionable DTO paths. |
+| D-009 | LOCKED | Keep exact-pinned libFuzzer targets in an isolated nightly-only package; stable production and dual-platform gates remain independent. |
 
 ## 1. Objective and boundaries
 
@@ -695,7 +747,7 @@ permutations preserve objective quality, and deadline behavior is bounded.
 
 - [x] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
 - [x] `M4.2` Add malformed-input diagnostics and safe report serialization.
-- [ ] `M4.3` Complete property tests, fuzz targets, and release benchmarks.
+- [x] `M4.3` Complete property tests, fuzz targets, and release benchmarks.
 - [ ] `M4.4` Add dual-platform CI for ARM64 macOS and x86-64 Linux.
 - [ ] `M4.5` Document algorithm/status semantics, presets, reproducibility, and
   optimality claims.
