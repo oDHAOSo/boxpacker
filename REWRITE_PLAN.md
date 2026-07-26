@@ -11,7 +11,9 @@ determinism, deadline, portability, maintenance, and licensing evidence is
 recorded. ADR 0001 selects the in-tree clean-room backend and rejects both
 external candidates. Deterministic seeded portfolio work partitioning is
 implemented with cooperative deadline cancellation and a validated shared
-incumbent; improvement neighborhoods are next.
+incumbent. Deterministic move, swap, rotation, ejection-chain, and
+ruin/recreate reconstruction neighborhoods are implemented; bounded exact
+repair for small residuals is next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -71,7 +73,7 @@ Before handing work to another agent:
   isolated adapters for both exact-version dependency candidates, and the
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
-- Completed in this handoff: `M2.5`, `M2.6`, `M3.1`, and `M3.2`.
+- Completed in this handoff: `M2.5`, `M2.6`, `M3.1`, `M3.2`, and `M3.3`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -133,6 +135,15 @@ Before handing work to another agent:
     constructive enumeration. A pre-cancelled request returns a valid complete
     canonical incumbent, and a 10,000-work-unit 8/77 request honors a 5 ms
     deadline within the 250 ms shutdown allowance.
+  - `ConstructionPlan` separates deterministic item order and forced exact
+    rotations from geometry construction. `improve.rs` adds seeded move, swap,
+    forced-rotation, three-item ejection-chain, and ruin/recreate
+    transformations; each preserves the complete stable-ID item permutation.
+  - The default eight-work-unit portfolio runs the canonical constructor, two
+    seeded shuffles, and all five neighborhood kinds. Each reconstruction uses
+    the same exact maximal-space engine and independently validated incumbent
+    publication path. Current and 8/77 tests prove the neighborhood portfolio
+    retains or improves the canonical objective.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -170,6 +181,16 @@ Before handing work to another agent:
   - `devenv shell -- cargo test --test portfolio` reported 4 passing
     reproducibility, quality-floor, cancellation, and deadline tests;
   - the M3.2 strict Clippy run and release build passed;
+  - after M3.3,
+    `devenv shell -- cargo test --all-targets --all-features` reported 62
+    passing tests (12 unit and 50 integration), with no failures;
+  - `devenv shell -- cargo test --lib solver::improve` reported 3 passing
+    deterministic-permutation and forced-orientation tests;
+  - `devenv shell -- cargo test --test portfolio` reported 5 passing tests,
+    including current and 8/77 objective quality floors;
+  - the M3.3 strict Clippy run and release build passed;
+  - the four-thread neighborhood Criterion point estimates were 2.1675 ms on
+    the current fixture and 3.1145 ms on 8/77;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -221,17 +242,20 @@ Before handing work to another agent:
 - Changed files in M3.2: `README.md`, `REWRITE_PLAN.md`,
   `src/solver/constructive.rs`, `src/solver/mod.rs`,
   `src/solver/portfolio.rs`, and `tests/portfolio.rs`.
+- Changed files in M3.3: `README.md`, `REWRITE_PLAN.md`,
+  `src/solver/constructive.rs`, `src/solver/improve.rs`, `src/solver/mod.rs`,
+  `src/solver/portfolio.rs`, and `tests/portfolio.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
 - Decision register changes: D-005 is now `LOCKED`.
-- Remaining blockers: none for `M3.3`. Automated dual-platform CI remains
+- Remaining blockers: none for `M3.4`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M3.3`, add deterministic move, swap, rotation,
-  ejection-chain, and ruin/recreate neighborhoods that operate behind the
-  domain solver boundary and publish only objective improvements.
+- Exact next task: `M3.4`, add bounded branch-and-bound repair for small
+  residual item sets, with cooperative cancellation and honest optimality
+  status limited to the repaired subproblem.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -528,7 +552,7 @@ saved result or has a documented gap and next experiment.
 
 - [x] `M3.1` Add deterministic portfolio work partitioning and seeded search.
 - [x] `M3.2` Add deadline cancellation and a validated shared incumbent.
-- [ ] `M3.3` Add move, swap, rotation, ejection-chain, and ruin/recreate
+- [x] `M3.3` Add move, swap, rotation, ejection-chain, and ruin/recreate
   neighborhoods.
 - [ ] `M3.4` Add bounded branch-and-bound repair for small residuals.
 - [ ] `M3.5` Emit structured progress/metrics without coupling UI code to

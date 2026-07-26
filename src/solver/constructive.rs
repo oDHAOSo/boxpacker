@@ -1,5 +1,5 @@
 use std::cmp::{Ordering, Reverse};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
 use crate::geometry::{Aabb, Coordinate, Dimensions, Point};
@@ -33,10 +33,47 @@ pub(super) enum ItemOrder {
     Seeded(u64),
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ConstructionPlan {
+    pub(super) item_ids: Vec<ItemId>,
+    pub(super) forced_rotations: BTreeMap<ItemId, usize>,
+}
+
+impl ConstructionPlan {
+    pub(super) fn canonical(instance: &PackingInstance) -> Self {
+        Self {
+            item_ids: canonical_item_order(instance),
+            forced_rotations: BTreeMap::new(),
+        }
+    }
+}
+
+pub(super) fn canonical_item_order(instance: &PackingInstance) -> Vec<ItemId> {
+    let mut item_ids = instance
+        .items()
+        .iter()
+        .map(|item| item.id())
+        .collect::<Vec<_>>();
+    item_ids.sort_unstable_by(|left, right| compare_items(instance, *left, *right));
+    item_ids
+}
+
 pub(super) fn solve_with_item_order(
     instance: &PackingInstance,
     request: &SolveRequest,
     item_order: ItemOrder,
+) -> Result<SolverOutcome, SolverError> {
+    let mut plan = ConstructionPlan::canonical(instance);
+    if let ItemOrder::Seeded(seed) = item_order {
+        seeded_shuffle(&mut plan.item_ids, seed);
+    }
+    solve_with_plan(instance, request, &plan)
+}
+
+pub(super) fn solve_with_plan(
+    instance: &PackingInstance,
+    request: &SolveRequest,
+    plan: &ConstructionPlan,
 ) -> Result<SolverOutcome, SolverError> {
     let started_at = Instant::now();
     let mut states = instance
@@ -44,23 +81,14 @@ pub(super) fn solve_with_item_order(
         .iter()
         .map(|container| ContainerState::new(container.id(), container.dimensions()))
         .collect::<Vec<_>>();
-    let mut item_ids = instance
-        .items()
-        .iter()
-        .map(|item| item.id())
-        .collect::<Vec<_>>();
-    item_ids.sort_unstable_by(|left, right| compare_items(instance, *left, *right));
-    if let ItemOrder::Seeded(seed) = item_order {
-        seeded_shuffle(&mut item_ids, seed);
-    }
 
     let mut explored_candidates = 0_u64;
     let mut placements = Vec::new();
     let mut unplaced_items = Vec::new();
 
-    for (position, item_id) in item_ids.iter().copied().enumerate() {
+    for (position, item_id) in plan.item_ids.iter().copied().enumerate() {
         if request.should_stop() {
-            unplaced_items.extend(item_ids[position..].iter().copied());
+            unplaced_items.extend(plan.item_ids[position..].iter().copied());
             break;
         }
 
@@ -72,6 +100,7 @@ pub(super) fn solve_with_item_order(
             dimensions,
             &mut explored_candidates,
             request,
+            plan.forced_rotations.get(&item_id).copied(),
         )?;
         if let Some(candidate) = candidate {
             let placement = Placement::new(candidate.container_id, item_id, candidate.bounds);
@@ -160,9 +189,13 @@ fn find_best_candidate(
     dimensions: Dimensions,
     explored_candidates: &mut u64,
     request: &SolveRequest,
+    forced_rotation: Option<usize>,
 ) -> Result<Option<Candidate>, SolverError> {
     let mut best = None;
-    let rotations = dimensions.unique_rotations();
+    let mut rotations = dimensions.unique_rotations();
+    if let Some(rotation_index) = forced_rotation {
+        rotations = vec![rotations[rotation_index % rotations.len()]];
+    }
 
     for state in states {
         let mut seen = BTreeSet::new();

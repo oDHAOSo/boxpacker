@@ -6,7 +6,8 @@ use std::time::Instant;
 
 use crate::objective::ObjectiveValue;
 use crate::solution::Solution;
-use crate::solver::constructive::{ItemOrder, solve_with_item_order};
+use crate::solver::constructive::{ItemOrder, solve_with_item_order, solve_with_plan};
+use crate::solver::improve::{NeighborhoodKind, neighborhood_plan};
 use crate::solver::{
     OptimalityStatus, SolveRequest, SolverBackend, SolverError, SolverMetrics, SolverOutcome,
 };
@@ -50,9 +51,9 @@ impl SolverBackend for PortfolioBackend {
         let plan = WorkPlan::new(request.seed(), self.work_units, request.threads());
         let incumbent = Arc::new(SharedIncumbent::new(instance));
 
-        let canonical = solve_with_item_order(instance, request, plan.canonical.item_order)?;
+        let canonical = solve_work(instance, request, plan.canonical.strategy)?;
         incumbent.publish(plan.canonical.index, canonical)?;
-        execute_seeded_partitions(instance, request, plan.partitions, Arc::clone(&incumbent))?;
+        execute_partitions(instance, request, plan.partitions, Arc::clone(&incumbent))?;
 
         let snapshot = incumbent.snapshot()?;
         Ok(SolverOutcome::new(
@@ -71,7 +72,14 @@ impl SolverBackend for PortfolioBackend {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct WorkUnit {
     index: usize,
-    item_order: ItemOrder,
+    strategy: WorkStrategy,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WorkStrategy {
+    Canonical,
+    Seeded(u64),
+    Neighborhood(NeighborhoodKind, u64),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -84,7 +92,7 @@ impl WorkPlan {
     fn new(seed: u64, work_units: NonZeroUsize, threads: NonZeroUsize) -> Self {
         let canonical = WorkUnit {
             index: 0,
-            item_order: ItemOrder::Canonical,
+            strategy: WorkStrategy::Canonical,
         };
         let seeded_count = work_units.get().saturating_sub(1);
         let worker_count = threads.get().min(seeded_count);
@@ -92,10 +100,14 @@ impl WorkPlan {
 
         for index in 1..work_units.get() {
             let worker_index = (index - 1) % worker_count;
-            partitions[worker_index].push(WorkUnit {
-                index,
-                item_order: ItemOrder::Seeded(derive_seed(seed, index)),
-            });
+            let seed = derive_seed(seed, index);
+            let strategy_index = (index - 1) % (NeighborhoodKind::ALL.len() + 1);
+            let strategy = if strategy_index == 0 {
+                WorkStrategy::Seeded(seed)
+            } else {
+                WorkStrategy::Neighborhood(NeighborhoodKind::ALL[strategy_index - 1], seed)
+            };
+            partitions[worker_index].push(WorkUnit { index, strategy });
         }
 
         Self {
@@ -113,7 +125,24 @@ fn derive_seed(seed: u64, work_index: usize) -> u64 {
     value ^ (value >> 31)
 }
 
-fn execute_seeded_partitions(
+fn solve_work(
+    instance: &PackingInstance,
+    request: &SolveRequest,
+    strategy: WorkStrategy,
+) -> Result<SolverOutcome, SolverError> {
+    match strategy {
+        WorkStrategy::Canonical => solve_with_item_order(instance, request, ItemOrder::Canonical),
+        WorkStrategy::Seeded(seed) => {
+            solve_with_item_order(instance, request, ItemOrder::Seeded(seed))
+        }
+        WorkStrategy::Neighborhood(kind, seed) => {
+            let plan = neighborhood_plan(instance, kind, seed);
+            solve_with_plan(instance, request, &plan)
+        }
+    }
+}
+
+fn execute_partitions(
     instance: &PackingInstance,
     request: &SolveRequest,
     partitions: Vec<Vec<WorkUnit>>,
@@ -129,8 +158,8 @@ fn execute_seeded_partitions(
                         if request.should_stop() {
                             break;
                         }
-                        let outcome = solve_with_item_order(instance, request, work.item_order)
-                            .inspect_err(|_| {
+                        let outcome =
+                            solve_work(instance, request, work.strategy).inspect_err(|_| {
                                 request.cancellation().cancel();
                             })?;
                         incumbent.publish(work.index, outcome).inspect_err(|_| {
@@ -285,7 +314,7 @@ mod tests {
             NonZeroUsize::new(3).expect("three is non-zero"),
         );
 
-        assert_eq!(plan.canonical.item_order, ItemOrder::Canonical);
+        assert_eq!(plan.canonical.strategy, WorkStrategy::Canonical);
         assert_eq!(
             plan.partitions
                 .iter()
@@ -294,8 +323,45 @@ mod tests {
             vec![vec![1, 4], vec![2, 5], vec![3, 6]]
         );
         assert_eq!(
-            plan.partitions[0][0].item_order,
-            ItemOrder::Seeded(derive_seed(17, 1))
+            plan.partitions[0][0].strategy,
+            WorkStrategy::Seeded(derive_seed(17, 1))
+        );
+        assert_eq!(
+            plan.partitions[1][0].strategy,
+            WorkStrategy::Neighborhood(NeighborhoodKind::Move, derive_seed(17, 2))
+        );
+        let mut strategies = plan
+            .partitions
+            .iter()
+            .flatten()
+            .map(|work| (work.index, work.strategy))
+            .collect::<Vec<_>>();
+        strategies.sort_unstable_by_key(|(index, _)| *index);
+        assert_eq!(
+            strategies,
+            vec![
+                (1, WorkStrategy::Seeded(derive_seed(17, 1))),
+                (
+                    2,
+                    WorkStrategy::Neighborhood(NeighborhoodKind::Move, derive_seed(17, 2))
+                ),
+                (
+                    3,
+                    WorkStrategy::Neighborhood(NeighborhoodKind::Swap, derive_seed(17, 3))
+                ),
+                (
+                    4,
+                    WorkStrategy::Neighborhood(NeighborhoodKind::Rotation, derive_seed(17, 4))
+                ),
+                (
+                    5,
+                    WorkStrategy::Neighborhood(NeighborhoodKind::EjectionChain, derive_seed(17, 5))
+                ),
+                (
+                    6,
+                    WorkStrategy::Neighborhood(NeighborhoodKind::RuinRecreate, derive_seed(17, 6))
+                ),
+            ]
         );
     }
 

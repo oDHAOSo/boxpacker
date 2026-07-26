@@ -33,7 +33,11 @@ counts. Solve requests now carry a cloneable cooperative-cancellation token;
 the portfolio establishes a canonical incumbent, independently validates every
 completed worker candidate before publishing it to the shared store, and stops
 launching work when cancelled or out of time. Improvement neighborhoods are
-next.
+now present as deterministic move, swap, forced-rotation, three-item
+ejection-chain, and ruin/recreate construction-plan transformations. Every
+transformed plan rebuilds through exact geometry and must pass the shared
+validator before it can improve the incumbent. Bounded exact repair for small
+residuals is next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

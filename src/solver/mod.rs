@@ -8,6 +8,7 @@ use crate::solution::Solution;
 use crate::validate::PackingInstance;
 
 pub mod constructive;
+pub mod improve;
 pub mod portfolio;
 
 /// Backend-independent solver entry point used by the bake-off and portfolio.

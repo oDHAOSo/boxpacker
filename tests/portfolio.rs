@@ -71,6 +71,32 @@ fn portfolio_retains_or_improves_the_canonical_incumbent() {
 }
 
 #[test]
+fn neighborhood_portfolio_retains_or_improves_the_scale_incumbent() {
+    let instance = instance(SCALE_INPUT);
+    let canonical = ConstructiveBackend
+        .solve(&instance, &request(97, 1))
+        .expect("scale canonical constructor should solve");
+    let portfolio = PortfolioBackend::default()
+        .solve(&instance, &request(97, 4))
+        .expect("scale neighborhood portfolio should solve");
+
+    let canonical_summary = validate_solution(&instance, canonical.solution())
+        .expect("scale canonical solution should validate");
+    let portfolio_summary = validate_solution(&instance, portfolio.solution())
+        .expect("scale portfolio solution should validate");
+
+    assert!(
+        ObjectiveValue::from_summary(&portfolio_summary)
+            >= ObjectiveValue::from_summary(&canonical_summary)
+    );
+    assert_eq!(
+        portfolio_summary.placed_item_count() + portfolio_summary.unplaced_item_count(),
+        77
+    );
+    assert_eq!(portfolio.metrics().validated_candidates(), 8);
+}
+
+#[test]
 fn cancelled_request_returns_a_valid_canonical_incumbent() {
     let instance = instance(CURRENT_INPUT);
     let cancellation = CancellationToken::new();
