@@ -41,7 +41,10 @@ residuals now freezes the validated incumbent placements, branches over
 place/unplaced choices and every unique rotation at maximal-space face events,
 and prunes on unattainable volume/count bounds. Its exhaustion flag applies
 only to that bounded residual subproblem; overall solver status remains
-heuristic. Structured progress and metrics are next.
+heuristic. Callers can now attach a thread-safe progress sink to a solve
+request and receive typed portfolio, stable work-unit, validated-objective,
+repair, and final aggregate-metric events without importing CLI or report
+types. Monotonic effort and complete reproducibility proofs are next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

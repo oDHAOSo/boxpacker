@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
+use crate::objective::ObjectiveValue;
 use crate::solution::Solution;
 use crate::validate::PackingInstance;
 
@@ -21,6 +22,52 @@ pub trait SolverBackend: Send + Sync {
         instance: &PackingInstance,
         request: &SolveRequest,
     ) -> Result<SolverOutcome, SolverError>;
+}
+
+/// Stable kind of solver work reported independently from execution order.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProgressWorkKind {
+    Canonical,
+    Seeded,
+    Move,
+    Swap,
+    Rotation,
+    EjectionChain,
+    RuinRecreate,
+    ExactRepair,
+}
+
+/// Typed progress emitted by solver orchestration without UI dependencies.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProgressEvent {
+    PortfolioStarted {
+        construction_work_units: usize,
+        threads: NonZeroUsize,
+        seed: u64,
+    },
+    WorkStarted {
+        work_index: usize,
+        kind: ProgressWorkKind,
+    },
+    CandidateValidated {
+        work_index: usize,
+        kind: ProgressWorkKind,
+        objective: ObjectiveValue,
+    },
+    RepairFinished {
+        work_index: usize,
+        explored_nodes: u64,
+        exhaustive: bool,
+    },
+    SolveFinished {
+        metrics: SolverMetrics,
+        cancelled: bool,
+    },
+}
+
+/// Thread-safe receiver for structured solver progress.
+pub trait ProgressSink: Send + Sync {
+    fn record(&self, event: ProgressEvent);
 }
 
 /// Cloneable cooperative-cancellation signal shared by a solve and its owner.
@@ -46,12 +93,13 @@ impl CancellationToken {
 }
 
 /// Reproducible effort controls supplied to a backend.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SolveRequest {
     deadline: Deadline,
     seed: u64,
     threads: NonZeroUsize,
     cancellation: CancellationToken,
+    progress: Option<Arc<dyn ProgressSink>>,
 }
 
 impl SolveRequest {
@@ -72,6 +120,7 @@ impl SolveRequest {
             seed,
             threads,
             cancellation,
+            progress: None,
         }
     }
 
@@ -98,6 +147,31 @@ impl SolveRequest {
     #[must_use]
     pub fn should_stop(&self) -> bool {
         self.cancellation.is_cancelled() || self.deadline.is_expired()
+    }
+
+    #[must_use]
+    pub fn with_progress_sink(mut self, progress: Arc<dyn ProgressSink>) -> Self {
+        self.progress = Some(progress);
+        self
+    }
+
+    pub(crate) fn record_progress(&self, event: ProgressEvent) {
+        if let Some(progress) = &self.progress {
+            progress.record(event);
+        }
+    }
+}
+
+impl fmt::Debug for SolveRequest {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("SolveRequest")
+            .field("deadline", &self.deadline)
+            .field("seed", &self.seed)
+            .field("threads", &self.threads)
+            .field("cancellation", &self.cancellation)
+            .field("has_progress_sink", &self.progress.is_some())
+            .finish()
     }
 }
 

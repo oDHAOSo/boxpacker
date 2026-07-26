@@ -10,7 +10,8 @@ use crate::solver::constructive::{ItemOrder, solve_with_item_order, solve_with_p
 use crate::solver::exact::{RepairConfig, repair_residual};
 use crate::solver::improve::{NeighborhoodKind, neighborhood_plan};
 use crate::solver::{
-    OptimalityStatus, SolveRequest, SolverBackend, SolverError, SolverMetrics, SolverOutcome,
+    OptimalityStatus, ProgressEvent, ProgressWorkKind, SolveRequest, SolverBackend, SolverError,
+    SolverMetrics, SolverOutcome,
 };
 use crate::validate::{PackingInstance, validate_solution};
 
@@ -51,9 +52,23 @@ impl SolverBackend for PortfolioBackend {
         let started_at = Instant::now();
         let plan = WorkPlan::new(request.seed(), self.work_units, request.threads());
         let incumbent = Arc::new(SharedIncumbent::new(instance));
+        request.record_progress(ProgressEvent::PortfolioStarted {
+            construction_work_units: self.work_units.get(),
+            threads: request.threads(),
+            seed: request.seed(),
+        });
 
+        request.record_progress(ProgressEvent::WorkStarted {
+            work_index: plan.canonical.index,
+            kind: plan.canonical.strategy.progress_kind(),
+        });
         let canonical = solve_work(instance, request, plan.canonical.strategy)?;
-        incumbent.publish(plan.canonical.index, canonical)?;
+        let objective = incumbent.publish(plan.canonical.index, canonical)?;
+        request.record_progress(ProgressEvent::CandidateValidated {
+            work_index: plan.canonical.index,
+            kind: plan.canonical.strategy.progress_kind(),
+            objective,
+        });
         execute_partitions(instance, request, plan.partitions, Arc::clone(&incumbent))?;
 
         let snapshot = incumbent.snapshot()?;
@@ -65,6 +80,16 @@ impl SolverBackend for PortfolioBackend {
                 RepairConfig::default(),
             )?
         {
+            let repair_work_index = self.work_units.get();
+            request.record_progress(ProgressEvent::WorkStarted {
+                work_index: repair_work_index,
+                kind: ProgressWorkKind::ExactRepair,
+            });
+            request.record_progress(ProgressEvent::RepairFinished {
+                work_index: repair_work_index,
+                explored_nodes: repair.explored_nodes(),
+                exhaustive: repair.exhaustive(),
+            });
             let repair_metrics = SolverMetrics::new(
                 repair
                     .explored_candidates()
@@ -74,25 +99,35 @@ impl SolverBackend for PortfolioBackend {
                 u64::from(repair.solution() != &snapshot.solution),
                 started_at.elapsed(),
             );
-            incumbent.publish(
-                self.work_units.get(),
+            let objective = incumbent.publish(
+                repair_work_index,
                 SolverOutcome::new(
                     repair.solution().clone(),
                     repair_metrics,
                     OptimalityStatus::Heuristic,
                 ),
             )?;
+            request.record_progress(ProgressEvent::CandidateValidated {
+                work_index: repair_work_index,
+                kind: ProgressWorkKind::ExactRepair,
+                objective,
+            });
         }
 
         let snapshot = incumbent.snapshot()?;
+        let metrics = SolverMetrics::new(
+            snapshot.explored_candidates,
+            snapshot.validated_candidates,
+            snapshot.improvements,
+            started_at.elapsed(),
+        );
+        request.record_progress(ProgressEvent::SolveFinished {
+            metrics,
+            cancelled: request.cancellation().is_cancelled(),
+        });
         Ok(SolverOutcome::new(
             snapshot.solution,
-            SolverMetrics::new(
-                snapshot.explored_candidates,
-                snapshot.validated_candidates,
-                snapshot.improvements,
-                started_at.elapsed(),
-            ),
+            metrics,
             OptimalityStatus::Heuristic,
         ))
     }
@@ -109,6 +144,22 @@ enum WorkStrategy {
     Canonical,
     Seeded(u64),
     Neighborhood(NeighborhoodKind, u64),
+}
+
+impl WorkStrategy {
+    const fn progress_kind(self) -> ProgressWorkKind {
+        match self {
+            Self::Canonical => ProgressWorkKind::Canonical,
+            Self::Seeded(_) => ProgressWorkKind::Seeded,
+            Self::Neighborhood(NeighborhoodKind::Move, _) => ProgressWorkKind::Move,
+            Self::Neighborhood(NeighborhoodKind::Swap, _) => ProgressWorkKind::Swap,
+            Self::Neighborhood(NeighborhoodKind::Rotation, _) => ProgressWorkKind::Rotation,
+            Self::Neighborhood(NeighborhoodKind::EjectionChain, _) => {
+                ProgressWorkKind::EjectionChain
+            }
+            Self::Neighborhood(NeighborhoodKind::RuinRecreate, _) => ProgressWorkKind::RuinRecreate,
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -187,13 +238,23 @@ fn execute_partitions(
                         if request.should_stop() {
                             break;
                         }
+                        request.record_progress(ProgressEvent::WorkStarted {
+                            work_index: work.index,
+                            kind: work.strategy.progress_kind(),
+                        });
                         let outcome =
                             solve_work(instance, request, work.strategy).inspect_err(|_| {
                                 request.cancellation().cancel();
                             })?;
-                        incumbent.publish(work.index, outcome).inspect_err(|_| {
-                            request.cancellation().cancel();
-                        })?;
+                        let objective =
+                            incumbent.publish(work.index, outcome).inspect_err(|_| {
+                                request.cancellation().cancel();
+                            })?;
+                        request.record_progress(ProgressEvent::CandidateValidated {
+                            work_index: work.index,
+                            kind: work.strategy.progress_kind(),
+                            objective,
+                        });
                     }
                     Ok(())
                 })
@@ -248,14 +309,19 @@ impl<'instance> SharedIncumbent<'instance> {
         }
     }
 
-    fn publish(&self, work_index: usize, outcome: SolverOutcome) -> Result<(), SolverError> {
+    fn publish(
+        &self,
+        work_index: usize,
+        outcome: SolverOutcome,
+    ) -> Result<ObjectiveValue, SolverError> {
         let summary = validate_solution(self.instance, outcome.solution()).map_err(|errors| {
             SolverError::new(format!(
                 "portfolio work unit {work_index} produced an invalid candidate:\n{errors}"
             ))
         })?;
+        let objective = ObjectiveValue::from_summary(&summary);
         let candidate = ValidatedCandidate {
-            objective: ObjectiveValue::from_summary(&summary),
+            objective: objective.clone(),
             solution: outcome.solution().clone(),
             explored_candidates: outcome.metrics().explored_candidates(),
         };
@@ -275,7 +341,7 @@ impl<'instance> SharedIncumbent<'instance> {
         if replaces_best {
             state.best_work_index = Some(work_index);
         }
-        Ok(())
+        Ok(objective)
     }
 
     fn snapshot(&self) -> Result<IncumbentSnapshot, SolverError> {

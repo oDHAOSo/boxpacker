@@ -14,7 +14,8 @@ implemented with cooperative deadline cancellation and a validated shared
 incumbent. Deterministic move, swap, rotation, ejection-chain, and
 ruin/recreate reconstruction neighborhoods are implemented; bounded exact
 event repair for small residuals is implemented; structured progress and
-metrics are next.
+metrics are implemented without UI coupling; monotonic effort and
+reproducibility proofs are next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -74,8 +75,7 @@ Before handing work to another agent:
   isolated adapters for both exact-version dependency candidates, and the
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
-- Completed in this handoff: `M2.5`, `M2.6`, `M3.1`, `M3.2`, `M3.3`, and
-  `M3.4`.
+- Completed in this handoff: every task from `M2.5` through `M3.5`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -156,6 +156,13 @@ Before handing work to another agent:
     `exhaustive` flag explicitly limited to the frozen-placement event
     subproblem. The portfolio retains `Heuristic` overall status and publishes
     repair through the same validator as a ninth candidate.
+  - `SolveRequest::with_progress_sink` accepts a thread-safe domain
+    `ProgressSink`. The portfolio emits typed start, work-start,
+    independently-validated objective, repair completion, and final aggregate
+    metric events. Work events carry stable indices and kinds so concurrent
+    delivery can be normalized without relying on scheduling order.
+  - Progress types depend only on solver/domain objective and metric types; no
+    CLI, report, serialization, or UI type enters solver orchestration.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -213,6 +220,12 @@ Before handing work to another agent:
   - the M3.4 strict Clippy run and release build passed;
   - the four-thread repaired-portfolio Criterion point estimates were
     2.4627 ms on the current fixture and 3.3434 ms on 8/77;
+  - after M3.5,
+    `devenv shell -- cargo test --all-targets --all-features` reported 66
+    passing tests (15 unit and 51 integration), with no failures;
+  - `devenv shell -- cargo test --test progress` reported 1 passing typed-event
+    and stable-work-identifier test;
+  - the M3.5 strict Clippy run and release build passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -270,17 +283,20 @@ Before handing work to another agent:
 - Changed files in M3.4: `README.md`, `REWRITE_PLAN.md`,
   `src/solver/constructive.rs`, `src/solver/exact.rs`, `src/solver/mod.rs`,
   `src/solver/portfolio.rs`, and `tests/portfolio.rs`.
+- Changed files in M3.5: `README.md`, `REWRITE_PLAN.md`, `src/solver/mod.rs`,
+  `src/solver/portfolio.rs`, and `tests/progress.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
 - Decision register changes: D-005 is now `LOCKED`.
-- Remaining blockers: none for `M3.5`. Automated dual-platform CI remains
+- Remaining blockers: none for `M3.6`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M3.5`, emit structured progress and aggregate metrics from
-  constructors, neighborhoods, incumbent publication, and exact repair without
-  coupling solver code to the CLI or report.
+- Exact next task: `M3.6`, prove that increased fixed effort retains or
+  improves the incumbent and that fixed effort, seed, and thread settings
+  reproduce solutions, aggregate metrics other than elapsed time, and
+  normalized structured progress.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -580,7 +596,7 @@ saved result or has a documented gap and next experiment.
 - [x] `M3.3` Add move, swap, rotation, ejection-chain, and ruin/recreate
   neighborhoods.
 - [x] `M3.4` Add bounded branch-and-bound repair for small residuals.
-- [ ] `M3.5` Emit structured progress/metrics without coupling UI code to
+- [x] `M3.5` Emit structured progress/metrics without coupling UI code to
   solver logic.
 - [ ] `M3.6` Prove through tests that increased effort retains or improves the
   incumbent and that fixed effort/seed/thread settings reproduce results.
