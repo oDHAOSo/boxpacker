@@ -1,0 +1,15 @@
+{ ... }:
+
+{
+  languages.rust = {
+    enable = true;
+    channel = "stable";
+  };
+
+  enterTest = ''
+    cargo fmt --all --check
+    cargo clippy --all-targets --all-features -- -D warnings
+    cargo test --all-targets --all-features
+  '';
+}
+

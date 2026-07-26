@@ -1,0 +1,14 @@
+# Rust
+/target/
+
+# devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv/
+
+# Generated program output
+/output.html
+/output.json
