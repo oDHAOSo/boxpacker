@@ -20,7 +20,10 @@ independently valid result that improves the saved fixture baseline. Candidate
 library adapters are isolated behind the same backend trait, but neither has
 been selected. Known-answer, adversarial, current, reversed-current, and
 generated 8-container/77-item fixtures now record independently validated
-objectives; measured runtime, portability, and maintenance evaluation are next.
+objectives. The M2.5 bake-off now records release runtime, determinism,
+deadline behavior, portability, dependency cost, maintenance, and licensing in
+[`docs/bakeoff/M2.5.md`](docs/bakeoff/M2.5.md); solver selection remains
+reserved for the M2.6 ADR.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

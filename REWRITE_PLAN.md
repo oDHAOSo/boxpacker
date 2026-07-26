@@ -6,9 +6,9 @@ adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
 are implemented; the event-based constructive baseline is independently valid
 and improves the saved fixture, both candidate libraries are isolated behind
-the backend boundary, and the full correctness/quality fixture matrix is
-recorded. Runtime, determinism, portability, maintenance, and licensing
-evaluation are next.
+the backend boundary, and the full M2.5 correctness, quality, runtime,
+determinism, deadline, portability, maintenance, and licensing evidence is
+recorded. The selection ADR is next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -64,10 +64,11 @@ Before handing work to another agent:
   independent from the old reference repository. Its parent is not a Git
   repository.
 - Completed before this handoff: `M0`, all of `M1`, and `M2.1` through
-  `M2.3`. The compatibility shell, exact validator, clean-room baseline, and
-  isolated adapters for both exact-version dependency candidates are present.
-  No old solver or scoring code was copied and no dependency is selected.
-- Completed in this handoff: `M2.4`.
+  `M2.4`. The compatibility shell, exact validator, clean-room baseline,
+  isolated adapters for both exact-version dependency candidates, and the
+  fixed correctness/quality matrix are present. No old solver or scoring code
+  was copied and no dependency is selected.
+- Completed in this handoff: `M2.5`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -86,54 +87,77 @@ Before handing work to another agent:
     `(73, 694,614.920, 8, 282.900, 830,038.000)`.
   - Every recorded candidate passes the independent exact validator before its
     metrics are asserted.
+  - Criterion release benchmarks on native ARM64 macOS record the clean-room,
+    `bin-packing`, and `u-nesting-d3` point estimates as 577.17 µs, 42.831 ms,
+    and 286.24 µs on the current fixture, and 851.11 µs, 182.70 ms, and
+    440.12 µs on 8/77.
+  - Fixed seed/effort reproduces identical domain solutions for every backend.
+    The clean-room and `u-nesting-d3` adapters return independently valid 8/77
+    incumbents within a 5 ms deadline plus a 250 ms shutdown allowance.
+    `bin-packing` has no deadline/cancellation API and is explicitly excluded
+    from that deadline assertion.
+  - `docs/bakeoff/M2.5.md` records model fit, enabled dependency graphs,
+    maintenance and MIT licensing evidence, native ARM64 release portability,
+    and the remaining lack of post-candidate x86-64 verification.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
     and the debug build;
-  - `devenv shell -- cargo test --all-targets --all-features` reported 52
-    passing tests (5 unit and 47 integration), with no failures;
+  - `devenv shell -- cargo test --all-targets --all-features` reported 54
+    passing tests (5 unit and 49 integration), with no failures;
   - `devenv shell -- cargo clippy --all-targets --all-features -- -D warnings`
     passed;
   - `devenv shell -- cargo test --test bakeoff_fixtures` reported 4 passing
     cross-backend fixture-matrix tests;
+  - `devenv shell -- cargo test --test bakeoff_evaluation` reported 2 passing
+    determinism/deadline tests;
+  - `devenv shell -- cargo bench --bench current_fixture -- --noplot`
+    completed all six release benchmark groups;
+  - `devenv shell -- cargo build --release` passed on native ARM64 macOS;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
-- Development-test note: the first fixture-matrix run printed current,
-  reversed, and scale results to collect evidence. Those observations were
-  replaced with exact assertions; the current/reversed full-objective equality
-  and the scale objective-component records passed.
+- Development-test note: sandboxed devenv attempts for the M2.5 production
+  dependency-tree and release checks failed exactly with `Failed to create GC
+  root` because the Nix daemon socket returned `Operation not permitted`.
+  Host-authorized locked-devenv reruns were used; no portable configuration was
+  weakened.
 - Environment note: host-authorized devenv was used because the prior handoff
   established that the sandbox cannot open the user Nix cache or connect to
   `/nix/var/nix/daemon-socket/socket` (`Operation not permitted`). No portable
   project configuration was changed. Cargo network access downloaded the two
   exact candidate versions and their locked transitive dependencies.
-- Prior cross-platform evidence remains valid: `devenv test` passed on native
-  ARM64 macOS and in an isolated x86-64 QEMU/Colima Linux guest using the same
-  lock. Automated dual-platform CI remains `M4.4`.
+- Prior cross-platform evidence remains valid for the pre-candidate project:
+  `devenv test` passed on native ARM64 macOS and in an isolated x86-64
+  QEMU/Colima Linux guest. Candidate dependencies were added after that run;
+  automated dual-platform verification remains `M4.4`.
 - Principal verification commands used in this handoff:
 
   ```sh
   devenv test
   devenv shell -- cargo test --test bakeoff_fixtures
+  devenv shell -- cargo test --test bakeoff_evaluation
   devenv shell -- cargo test --all-targets --all-features
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
+  devenv shell -- cargo bench --bench current_fixture -- --noplot
+  devenv shell -- cargo build --release
+  devenv shell -- cargo tree -p bin-packing -e normal
+  devenv shell -- cargo tree -p u-nesting-d3 -e normal
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
-- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`,
-  `tests/bakeoff_fixtures.rs`, `tests/fixtures/generated/README.md`, and
-  `tests/fixtures/generated/scale_8x77.json`.
+- Changed files in this handoff: `Cargo.lock`, `Cargo.toml`, `README.md`,
+  `REWRITE_PLAN.md`, `benches/current_fixture.rs`,
+  `docs/bakeoff/M2.5.md`, and `tests/bakeoff_evaluation.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. Section 5.1's bake-off is mandatory.
 - Decision register changes: none.
-- Remaining blockers: none for `M2.5`. Automated dual-platform CI remains
-  planned as `M4.4`.
-- Exact next task: `M2.5`, benchmark and record correctness, objective quality,
-  runtime, determinism, deadline behavior, portability, maintenance, and
-  licensing for the clean-room baseline and both dependency adapters. Preserve
-  the no-selection D-005 state until the evidence and M2.6 ADR are complete.
+- Remaining blockers: none for `M2.6`. Automated post-candidate
+  dual-platform CI remains planned as `M4.4`.
+- Exact next task: `M2.6`, record an ADR selecting the clean-room backend or a
+  dependency adapter, explicitly accept or reject each exact-version candidate,
+  and retain only dependencies justified by that decision.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -418,7 +442,7 @@ Exit: existing input produces compatible JSON/HTML from a validated fixture.
   the backend boundary.
 - [x] `M2.4` Add small known-answer, adversarial, current, permutation, and 8/77
   fixtures.
-- [ ] `M2.5` Benchmark correctness, objective quality, runtime, determinism,
+- [x] `M2.5` Benchmark correctness, objective quality, runtime, determinism,
   portability, maintenance, and licensing.
 - [ ] `M2.6` Record an ADR selecting or rejecting each dependency and pin the
   selected versions.
