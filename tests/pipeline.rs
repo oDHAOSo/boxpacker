@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -238,4 +239,32 @@ fn invalid_dimensions_report_every_field_without_writing_artifacts() {
     assert!(message.contains("3 error(s)"));
     assert!(!output_path.exists());
     assert!(!html_path.exists());
+}
+
+#[test]
+fn cli_reports_the_honest_solver_status() {
+    let directory = TestDirectory::new();
+    let input_path = directory.path().join("input.json");
+    let output_path = directory.path().join("packing.json");
+    fs::write(&input_path, CURRENT_INPUT).expect("input fixture should be writable");
+
+    let process = Command::new(env!("CARGO_BIN_EXE_boxpacker"))
+        .args([
+            "--input",
+            input_path.to_str().expect("temporary path should be UTF-8"),
+            "--output",
+            output_path
+                .to_str()
+                .expect("temporary path should be UTF-8"),
+            "--preset",
+            "fast",
+        ])
+        .output()
+        .expect("boxpacker process should launch");
+
+    assert!(process.status.success());
+    let stdout = String::from_utf8(process.stdout).expect("CLI output should be UTF-8");
+    assert!(stdout.contains("Packed 53 of 57 items (status: heuristic)"));
+    assert!(output_path.exists());
+    assert!(output_path.with_extension("html").exists());
 }

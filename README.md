@@ -65,7 +65,8 @@ solve-plus-independent-validation performance for every production preset on
 both representative fixtures. A GitHub Actions matrix now runs the locked
 stable format, strict Clippy, all-target test, and release-build gates on
 native ARM64 macOS and x86-64 Linux runners. Algorithm/status semantics,
-reproducibility, and user-facing preset documentation are next.
+reproducibility limits, presets, and status meanings are documented in
+[`docs/usage.md`](docs/usage.md).
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

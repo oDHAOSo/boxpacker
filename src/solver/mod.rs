@@ -227,6 +227,23 @@ pub enum OptimalityStatus {
     ProvenOptimal,
 }
 
+impl OptimalityStatus {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Heuristic => "heuristic",
+            Self::BoundMatched => "bound_matched",
+            Self::ProvenOptimal => "proven_optimal",
+        }
+    }
+}
+
+impl fmt::Display for OptimalityStatus {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
 /// Common metrics used to compare bake-off backends.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SolverMetrics {
@@ -368,5 +385,15 @@ mod tests {
         cancellation.cancel();
         assert!(request.should_stop());
         assert!(request.cancellation().is_cancelled());
+    }
+
+    #[test]
+    fn optimality_statuses_have_stable_honest_names() {
+        assert_eq!(OptimalityStatus::Heuristic.to_string(), "heuristic");
+        assert_eq!(OptimalityStatus::BoundMatched.to_string(), "bound_matched");
+        assert_eq!(
+            OptimalityStatus::ProvenOptimal.to_string(),
+            "proven_optimal"
+        );
     }
 }

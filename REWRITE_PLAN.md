@@ -76,7 +76,7 @@ Before handing work to another agent:
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
 - Completed in this handoff: every task from `M2.5` through `M3.6`, plus
-  `M4.1`, `M4.2`, `M4.3`, and `M4.4`.
+  `M4.1`, `M4.2`, `M4.3`, `M4.4`, and `M4.5`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -246,6 +246,20 @@ Before handing work to another agent:
     push, so the new workflow has not run on GitHub. Local YAML parsing and
     pinned `actionlint` validation pass; a first hosted run remains required
     before claiming current post-integration evidence on both platforms.
+  - `docs/usage.md` now documents the compatibility command/output contract,
+    provisional lexicographic objective, clean-room maximal-space portfolio,
+    neighborhoods, bounded residual repair, preset work/deadline table, status
+    meanings, quality evidence, and known limits.
+  - The reproducibility contract is explicit: fixed settings reproduce when
+    the wall-clock deadline is non-binding; elapsed time is excluded; tested
+    cross-thread stability does not make thread count irrelevant; a binding
+    deadline can stop at different candidate boundaries; and input reversal
+    preserves objective quality rather than byte-identical layouts.
+  - `OptimalityStatus` exposes stable `heuristic`, `bound_matched`, and
+    `proven_optimal` names. The CLI prints the returned status, an integration
+    test asserts the real fast-preset summary, and documentation states that
+    the current portfolio always reports `heuristic`; bounded repair
+    exhaustion never upgrades the global claim.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -364,6 +378,12 @@ Before handing work to another agent:
     used the exact `nixpkgs-src` revision in `devenv.lock`; actionlint 1.7.12
     reported no workflow errors;
   - the final host-authorized M4.4 `devenv test` gate passed;
+  - after M4.5,
+    `devenv shell -- cargo test --all-targets --all-features` reported 82
+    passing tests (19 unit and 63 integration), with no failures;
+  - focused stable-status and real-process CLI summary tests passed;
+  - the M4.5 format check, strict Clippy run, release build, and final
+    host-authorized `devenv test` gate passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -449,18 +469,20 @@ Before handing work to another agent:
   `tests/geometry_properties.rs`, and `tests/solution_properties.rs`.
 - Changed files in M4.4: `.github/workflows/ci.yml`, `README.md`, and
   `REWRITE_PLAN.md`.
+- Changed files in M4.5: `README.md`, `REWRITE_PLAN.md`, `docs/usage.md`,
+  `src/main.rs`, `src/solver/mod.rs`, and `tests/pipeline.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
-- Decision register changes: D-005, D-008, D-009, and D-010 are now `LOCKED`.
-- Remaining blockers: none for `M4.5`. The first hosted dual-platform workflow
-  run and a sanitizer/coverage-instrumented nightly fuzz campaign remain open
-  verification gaps for the final milestone exit.
-- Exact next task: `M4.5`, document algorithm and optimality status semantics,
-  preset/deadline behavior, and the exact limits of seed/thread
-  reproducibility.
+- Decision register changes: D-005 and D-008 through D-011 are now `LOCKED`.
+- Remaining blockers for final exit: product confirmation of D-004, the first
+  hosted dual-platform workflow run, and a sanitizer/coverage-instrumented
+  nightly fuzz campaign. None blocks consolidating the M4.6 handoff first.
+- Exact next task: `M4.6`, consolidate final evidence and remove only
+  genuinely obsolete provisional text, then request the one product decision
+  needed to resolve D-004.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -480,6 +502,7 @@ Before handing work to another agent:
 | D-008 | LOCKED | Use exact-pinned `serde_path_to_error` only at the compatibility-input boundary for actionable DTO paths. |
 | D-009 | LOCKED | Keep exact-pinned libFuzzer targets in an isolated nightly-only package; stable production and dual-platform gates remain independent. |
 | D-010 | LOCKED | Gate native ARM64 macOS and x86-64 Linux with a least-privilege workflow and a full-SHA-pinned checkout action. |
+| D-011 | LOCKED | Current portfolio status is always `heuristic`; restricted repair exhaustion never implies global optimality. |
 
 ## 1. Objective and boundaries
 
@@ -777,7 +800,7 @@ permutations preserve objective quality, and deadline behavior is bounded.
 - [x] `M4.2` Add malformed-input diagnostics and safe report serialization.
 - [x] `M4.3` Complete property tests, fuzz targets, and release benchmarks.
 - [x] `M4.4` Add dual-platform CI for ARM64 macOS and x86-64 Linux.
-- [ ] `M4.5` Document algorithm/status semantics, presets, reproducibility, and
+- [x] `M4.5` Document algorithm/status semantics, presets, reproducibility, and
   optimality claims.
 - [ ] `M4.6` Update the handoff snapshot with final evidence and remove
   obsolete provisional decisions.
