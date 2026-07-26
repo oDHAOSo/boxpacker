@@ -14,8 +14,8 @@ static template backed by serialized JSON data. A temporary saved-solution
 adapter maps the current fixture back to stable input IDs and exact AABBs
 without certifying solver geometry, and exact regression assertions preserve
 its baseline quality metrics. The rewrite now has a selected domain solver.
-Backend-neutral solutions, deadlines, common metrics, provisional lexicographic
-objectives, and independent exact validation are present; the
+Backend-neutral solutions, deadlines, common metrics, volume-first
+lexicographic objectives, and independent exact validation are present; the
 clean-room event-based constructive backend now produces a deterministic,
 independently valid result that improves the saved fixture baseline. Candidate
 library adapters were evaluated behind the same backend trait and removed
@@ -67,9 +67,9 @@ stable format, strict Clippy, all-target test, and release-build gates on
 native ARM64 macOS and x86-64 Linux runners. Algorithm/status semantics,
 reproducibility limits, presets, and status meanings are documented in
 [`docs/usage.md`](docs/usage.md).
-All planned rewrite implementation tasks are complete. Final M4 exit awaits
-confirmation of the provisional volume-first objective and the first hosted
-run of the checked-in native ARM64 macOS/x86-64 Linux workflow.
+All planned rewrite implementation tasks are complete, and the product has
+confirmed the volume-first objective. Final M4 exit awaits the first hosted run
+of the checked-in native ARM64 macOS/x86-64 Linux workflow.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

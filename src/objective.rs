@@ -2,11 +2,11 @@ use std::cmp::Ordering;
 
 use crate::validate::SolutionSummary;
 
-/// Inspectable components of the provisional lexicographic objective.
+/// Inspectable components of the volume-first lexicographic objective.
 ///
 /// `Ord` treats a better objective as greater, making `max` select the best
-/// validated incumbent. The volume/count ordering is intentionally localized
-/// here while D-004 awaits product confirmation.
+/// validated incumbent. D-004 locks unplaced volume ahead of unplaced item
+/// count; the ordering remains localized here so it stays inspectable.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ObjectiveValue {
     unplaced_volume: u128,

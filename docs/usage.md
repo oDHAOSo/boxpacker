@@ -38,8 +38,8 @@ candidates are ordered lexicographically:
 6. use stable geometry and ID values to break remaining ties.
 
 The first two priorities are deliberately not blended into a weighted score.
-Volume-before-count remains provisional pending product confirmation. Changing
-that order is local to the objective type.
+D-004 locks volume before count: when not every item fits, BoxPacker first
+maximizes total packed volume, then prefers the solution packing more items.
 
 ## Search algorithm
 

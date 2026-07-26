@@ -1,8 +1,7 @@
 # BoxPacker Rewrite Plan
 
 Status: Milestones M0 through M3 and all M4 implementation tasks are complete;
-final M4 exit awaits the D-004 product decision and a first hosted
-dual-platform CI run.
+final M4 exit awaits a first hosted dual-platform CI run.
 The compatibility shell, exact geometry boundary, safe report, saved-solution
 adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
@@ -65,8 +64,8 @@ Before handing work to another agent:
 
 ### Current handoff snapshot — 2026-07-26
 
-- Current milestone: `M4 — integration and hardening` (`BLOCKED` on the D-004
-  product decision and first hosted dual-platform CI evidence).
+- Current milestone: `M4 — integration and hardening` (`BLOCKED` on first
+  hosted dual-platform CI evidence).
 - Milestone M0 status: `DONE`; `devenv test` passed on both target platforms.
 - Milestone M1 status: `DONE`; the compatibility fixture passes its exact
   baseline regression and renders through the safe report template.
@@ -254,9 +253,9 @@ Before handing work to another agent:
     pinned `actionlint` validation pass; a first hosted run remains required
     before claiming current post-integration evidence on both platforms.
   - `docs/usage.md` now documents the compatibility command/output contract,
-    provisional lexicographic objective, clean-room maximal-space portfolio,
-    neighborhoods, bounded residual repair, preset work/deadline table, status
-    meanings, quality evidence, and known limits.
+    locked volume-first lexicographic objective, clean-room maximal-space
+    portfolio, neighborhoods, bounded residual repair, preset work/deadline
+    table, status meanings, quality evidence, and known limits.
   - The reproducibility contract is explicit: fixed settings reproduce when
     the wall-clock deadline is non-binding; elapsed time is excluded; tested
     cross-thread stability does not make thread count irrelevant; a binding
@@ -396,6 +395,9 @@ Before handing work to another agent:
     `small_instances` without a crash or persisted artifact;
   - the final M4.6 host-authorized `devenv test` gate passed after the handoff
     consolidation;
+  - after product confirmation locked D-004, the host-authorized
+    `devenv test` gate passed with the existing volume-before-count objective
+    proofs renamed from provisional terminology;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -485,28 +487,25 @@ Before handing work to another agent:
 - Changed files in M4.5: `README.md`, `REWRITE_PLAN.md`, `docs/usage.md`,
   `src/main.rs`, `src/solver/mod.rs`, and `tests/pipeline.rs`.
 - Changed files in M4.6: `README.md` and `REWRITE_PLAN.md`.
+- Changed files resolving D-004: `README.md`, `REWRITE_PLAN.md`,
+  `docs/bakeoff/M2.5.md`, `docs/decisions/0001-solver-backend.md`,
+  `docs/usage.md`, `src/objective.rs`, and `tests/solution_properties.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
-- Decision register changes: D-005 and D-008 through D-011 are now `LOCKED`.
-  No obsolete provisional decision remained to remove: D-004 still represents
-  a genuine product choice and remains explicit rather than being silently
-  locked.
-- Remaining blockers for final M4 exit: product confirmation of D-004 and the
-  first hosted dual-platform workflow run. This repository has no remote and
-  pushing is outside the authorized scope, so hosted evidence requires an
-  external repository/CI action.
-- Exact next task: resolve D-004. If count-first is selected, change the local
-  `ObjectiveValue` ordering and update affected assertions/documentation; if
-  volume-first is confirmed, lock D-004 without solver redesign. Then run the
-  existing hosted CI workflow on both native matrix entries and record the
-  results.
-- Open user/product decision: whether packed volume or packed item count is the
-  first tie-break when not all items can fit. Continue with the provisional
-  volume-first objective until the decision is made; the objective type must
-  make changing this ordering local.
+- Decision register changes: D-004, D-005, and D-008 through D-011 are now
+  `LOCKED`. Product confirmation resolved D-004 in favor of greatest packed
+  volume before packed item count; this matches the implemented ordering, so
+  only comments, test names, and documentation changed.
+- Remaining blocker for final M4 exit: the first hosted dual-platform workflow
+  run. This repository has no remote and pushing is outside the authorized
+  scope, so hosted evidence requires an external repository/CI action.
+- Exact next task: configure or use the intended hosted repository, run the
+  existing CI workflow on both native matrix entries, and record the results.
+- Resolved product decision: when not all items fit, maximize total packed
+  volume before considering packed item count.
 
 ### Decision register
 
@@ -515,7 +514,7 @@ Before handing work to another agent:
 | D-001 | LOCKED | Preserve the existing input shape and initial report behavior. |
 | D-002 | LOCKED | Use a clean-room solver; old packing and weighted scoring code are reference-only. |
 | D-003 | LOCKED | Use checked scaled-integer geometry; no raster step size or floating-point collision logic. |
-| D-004 | PROVISIONAL | Rank unplaced volume before unplaced item count; awaiting product confirmation. |
+| D-004 | LOCKED | Rank unplaced volume before unplaced item count; product confirmed greatest packed volume as the primary objective. |
 | D-005 | LOCKED | Select the in-tree clean-room backend; reject and remove both evaluated solver dependencies per ADR 0001. |
 | D-006 | DEFERRED | Add native MILP/CP-SAT only if measured quality justifies its portability cost. |
 | D-007 | LOCKED | Keep `boxpacker/` as its own Git repository on `main`, separate from the old reference repository. |
@@ -574,11 +573,9 @@ Use an explicit lexicographic objective instead of a weighted formula:
 5. maximize compactness/support and deterministic tie-break values.
 
 This makes the priority of each goal inspectable and prevents a tuning constant
-from silently changing what "better" means. Before the solver is finalized,
-confirm whether item count or item volume should take precedence when not
-everything can fit. The proposed default is volume because the stated goal is
-utilization. A later input-format revision can add per-item priority without
-changing the solver architecture.
+from silently changing what "better" means. D-004 locks item volume ahead of
+item count when not everything can fit. A later input-format revision can add
+per-item priority without changing the solver architecture.
 
 Every run must accept:
 

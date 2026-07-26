@@ -17,8 +17,8 @@ exact validation:
 The complete fixture results, Criterion intervals, deadline behavior,
 dependency graphs, portability limits, maintenance snapshot, and licensing
 evidence are retained in [`../bakeoff/M2.5.md`](../bakeoff/M2.5.md) and in the
-M2.5 commit. D-004's volume-first objective remains provisional, but it is the
-documented objective against which this decision must be made.
+M2.5 commit. D-004's volume-first objective is now locked and remains the
+documented objective against which this decision was made.
 
 ## Decision
 

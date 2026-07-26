@@ -282,7 +282,7 @@ fn ids_from_a_different_instance_cannot_escape_range_checks() {
 }
 
 #[test]
-fn provisional_objective_is_volume_first_then_count_and_compactness() {
+fn objective_is_volume_first_then_count_and_compactness() {
     let instance = instance(
         &[[10.0, 10.0, 10.0]],
         &[[2.0, 2.0, 2.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]],
@@ -340,7 +340,7 @@ fn provisional_objective_is_volume_first_then_count_and_compactness() {
 }
 
 #[test]
-fn provisional_objective_uses_count_then_containers_after_volume() {
+fn objective_uses_count_then_containers_after_volume() {
     let count_instance = instance(
         &[[10.0, 10.0, 10.0]],
         &[[1.0, 1.0, 2.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]],
