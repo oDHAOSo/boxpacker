@@ -6,14 +6,14 @@ This is the clean-room Rust rewrite of the project in
 This directory is an independent Git repository. The old project beside it has
 separate history and remains read-only reference material.
 
-The rewrite is currently implementing its compatibility shell. The legacy JSON
-input/output DTOs and command-line contract are present, and compatibility
-input dimensions are validated and converted once to exact scaled-integer
-geometry. The compatibility HTML report is also available as a safe static
-template backed by serialized JSON report data. A temporary saved-solution
-adapter maps the current compatibility fixture back to stable input IDs and
-exact AABBs without certifying solver geometry. Fixture baseline assertions and
-solver work remain milestone tasks. The proposed implementation and acceptance
+The compatibility-shell milestone is complete. The legacy JSON input/output
+DTOs and command-line contract are present, compatibility dimensions are
+converted once to exact scaled-integer geometry, and the HTML report is a safe
+static template backed by serialized JSON data. A temporary saved-solution
+adapter maps the current fixture back to stable input IDs and exact AABBs
+without certifying solver geometry, and exact regression assertions preserve
+its baseline quality metrics. The rewrite is now implementing the domain solver
+and independent-validation boundary. The proposed implementation and acceptance
 criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 
