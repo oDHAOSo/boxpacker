@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use boxpacker::model::InputData;
+use boxpacker::objective::ObjectiveValue;
 use boxpacker::solver::portfolio::PortfolioBackend;
 use boxpacker::solver::{
     ProgressEvent, ProgressSink, ProgressWorkKind, SolveRequest, SolverBackend,
@@ -33,6 +34,81 @@ impl Recorder {
             .expect("progress recorder lock should not be poisoned")
             .clone()
     }
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+enum NormalizedEvent {
+    PortfolioStarted {
+        construction_work_units: usize,
+        threads: usize,
+        seed: u64,
+    },
+    WorkStarted {
+        work_index: usize,
+        kind: ProgressWorkKind,
+    },
+    CandidateValidated {
+        work_index: usize,
+        kind: ProgressWorkKind,
+        objective: ObjectiveValue,
+    },
+    RepairFinished {
+        work_index: usize,
+        explored_nodes: u64,
+        exhaustive: bool,
+    },
+    SolveFinished {
+        explored_candidates: u64,
+        validated_candidates: u64,
+        improvements: u64,
+        cancelled: bool,
+    },
+}
+
+fn normalized(mut events: Vec<ProgressEvent>) -> Vec<NormalizedEvent> {
+    let mut normalized = events
+        .drain(..)
+        .map(|event| match event {
+            ProgressEvent::PortfolioStarted {
+                construction_work_units,
+                threads,
+                seed,
+            } => NormalizedEvent::PortfolioStarted {
+                construction_work_units,
+                threads: threads.get(),
+                seed,
+            },
+            ProgressEvent::WorkStarted { work_index, kind } => {
+                NormalizedEvent::WorkStarted { work_index, kind }
+            }
+            ProgressEvent::CandidateValidated {
+                work_index,
+                kind,
+                objective,
+            } => NormalizedEvent::CandidateValidated {
+                work_index,
+                kind,
+                objective,
+            },
+            ProgressEvent::RepairFinished {
+                work_index,
+                explored_nodes,
+                exhaustive,
+            } => NormalizedEvent::RepairFinished {
+                work_index,
+                explored_nodes,
+                exhaustive,
+            },
+            ProgressEvent::SolveFinished { metrics, cancelled } => NormalizedEvent::SolveFinished {
+                explored_candidates: metrics.explored_candidates(),
+                validated_candidates: metrics.validated_candidates(),
+                improvements: metrics.improvements(),
+                cancelled,
+            },
+        })
+        .collect::<Vec<_>>();
+    normalized.sort_unstable();
+    normalized
 }
 
 #[test]
@@ -124,4 +200,44 @@ fn portfolio_emits_typed_progress_with_stable_work_identifiers() {
         .expect("eligible residual should emit repair metrics");
     assert_eq!(repair.0, 8);
     assert!(repair.1 > 0);
+}
+
+#[test]
+fn fixed_settings_reproduce_normalized_progress_and_aggregate_metrics() {
+    let input: InputData =
+        serde_json::from_str(CURRENT_INPUT).expect("current fixture should deserialize");
+    let instance = PackingInstance::try_from(&input).expect("current fixture should validate");
+    let backend = PortfolioBackend::default();
+
+    let run = || {
+        let recorder = Arc::new(Recorder::default());
+        let request = SolveRequest::new(
+            Duration::from_secs(10),
+            149,
+            NonZeroUsize::new(4).expect("four is non-zero"),
+        )
+        .with_progress_sink(recorder.clone());
+        let outcome = backend
+            .solve(&instance, &request)
+            .expect("reproducible progress portfolio should solve");
+        (outcome, normalized(recorder.events()))
+    };
+
+    let (first, first_events) = run();
+    let (second, second_events) = run();
+
+    assert_eq!(first.solution(), second.solution());
+    assert_eq!(
+        (
+            first.metrics().explored_candidates(),
+            first.metrics().validated_candidates(),
+            first.metrics().improvements(),
+        ),
+        (
+            second.metrics().explored_candidates(),
+            second.metrics().validated_candidates(),
+            second.metrics().improvements(),
+        )
+    );
+    assert_eq!(first_events, second_events);
 }

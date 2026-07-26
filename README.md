@@ -44,7 +44,10 @@ only to that bounded residual subproblem; overall solver status remains
 heuristic. Callers can now attach a thread-safe progress sink to a solve
 request and receive typed portfolio, stable work-unit, validated-objective,
 repair, and final aggregate-metric events without importing CLI or report
-types. Monotonic effort and complete reproducibility proofs are next.
+types. M3's exit proofs cover monotonic objective quality across fixed effort
+levels, input-order reversal, solution and non-time metric reproducibility, and
+normalized concurrent progress. Connecting the selected portfolio to
+compatible JSON and HTML output is next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

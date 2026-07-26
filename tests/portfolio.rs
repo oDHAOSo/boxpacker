@@ -43,6 +43,30 @@ fn fixed_seed_portfolio_is_reproducible_across_thread_counts() {
     assert_eq!(parallel.solution(), repeated.solution());
     assert_eq!(serial.metrics().validated_candidates(), 9);
     assert_eq!(parallel.metrics().validated_candidates(), 9);
+    assert_eq!(
+        (
+            serial.metrics().explored_candidates(),
+            serial.metrics().validated_candidates(),
+            serial.metrics().improvements(),
+        ),
+        (
+            parallel.metrics().explored_candidates(),
+            parallel.metrics().validated_candidates(),
+            parallel.metrics().improvements(),
+        )
+    );
+    assert_eq!(
+        (
+            parallel.metrics().explored_candidates(),
+            parallel.metrics().validated_candidates(),
+            parallel.metrics().improvements(),
+        ),
+        (
+            repeated.metrics().explored_candidates(),
+            repeated.metrics().validated_candidates(),
+            repeated.metrics().improvements(),
+        )
+    );
     validate_solution(&instance, serial.solution())
         .expect("selected portfolio solution should validate");
 }
@@ -94,6 +118,70 @@ fn neighborhood_portfolio_retains_or_improves_the_scale_incumbent() {
         77
     );
     assert_eq!(portfolio.metrics().validated_candidates(), 9);
+}
+
+#[test]
+fn increased_fixed_effort_is_objective_monotonic() {
+    for json in [CURRENT_INPUT, SCALE_INPUT] {
+        let instance = instance(json);
+        let mut previous = None;
+
+        for work_units in [1, 2, 4, 8, 14] {
+            let backend = PortfolioBackend::new(
+                NonZeroUsize::new(work_units).expect("effort should be non-zero"),
+            );
+            let outcome = backend
+                .solve(&instance, &request(131, 4))
+                .expect("fixed-effort portfolio should solve");
+            let summary = validate_solution(&instance, outcome.solution())
+                .expect("fixed-effort solution should validate");
+            let objective = ObjectiveValue::from_summary(&summary);
+
+            if let Some(previous) = previous {
+                assert!(
+                    objective >= previous,
+                    "effort {work_units} replaced a better incumbent"
+                );
+            }
+            assert_eq!(
+                outcome.metrics().validated_candidates(),
+                u64::try_from(work_units + 1).expect("test effort should fit u64")
+            );
+            previous = Some(objective);
+        }
+    }
+}
+
+#[test]
+fn input_reversal_preserves_portfolio_objective_quality() {
+    for json in [CURRENT_INPUT, SCALE_INPUT] {
+        let original_input: InputData =
+            serde_json::from_str(json).expect("fixture should deserialize");
+        let mut reversed_input = original_input.clone();
+        reversed_input.containers.reverse();
+        reversed_input.contents.reverse();
+        let original =
+            PackingInstance::try_from(&original_input).expect("original fixture should validate");
+        let reversed =
+            PackingInstance::try_from(&reversed_input).expect("reversed fixture should validate");
+        let backend = PortfolioBackend::default();
+
+        let original_outcome = backend
+            .solve(&original, &request(157, 4))
+            .expect("original portfolio should solve");
+        let reversed_outcome = backend
+            .solve(&reversed, &request(157, 4))
+            .expect("reversed portfolio should solve");
+        let original_summary = validate_solution(&original, original_outcome.solution())
+            .expect("original portfolio should validate");
+        let reversed_summary = validate_solution(&reversed, reversed_outcome.solution())
+            .expect("reversed portfolio should validate");
+
+        assert_eq!(
+            ObjectiveValue::from_summary(&original_summary),
+            ObjectiveValue::from_summary(&reversed_summary)
+        );
+    }
 }
 
 #[test]

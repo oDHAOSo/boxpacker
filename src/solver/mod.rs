@@ -25,7 +25,7 @@ pub trait SolverBackend: Send + Sync {
 }
 
 /// Stable kind of solver work reported independently from execution order.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ProgressWorkKind {
     Canonical,
     Seeded,

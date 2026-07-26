@@ -1,6 +1,6 @@
 # BoxPacker Rewrite Plan
 
-Status: Milestones M0 through M2 are complete and Milestone M3 is in progress.
+Status: Milestones M0 through M3 are complete and Milestone M4 is in progress.
 The compatibility shell, exact geometry boundary, safe report, saved-solution
 adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
@@ -15,7 +15,7 @@ incumbent. Deterministic move, swap, rotation, ejection-chain, and
 ruin/recreate reconstruction neighborhoods are implemented; bounded exact
 event repair for small residuals is implemented; structured progress and
 metrics are implemented without UI coupling; monotonic effort and
-reproducibility proofs are next.
+reproducibility proofs pass. Production JSON/HTML integration is next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -63,7 +63,7 @@ Before handing work to another agent:
 
 ### Current handoff snapshot — 2026-07-26
 
-- Current milestone: `M3 — anytime improvement engine` (`IN PROGRESS`).
+- Current milestone: `M4 — integration and hardening` (`IN PROGRESS`).
 - Milestone M0 status: `DONE`; `devenv test` passed on both target platforms.
 - Milestone M1 status: `DONE`; the compatibility fixture passes its exact
   baseline regression and renders through the safe report template.
@@ -75,7 +75,7 @@ Before handing work to another agent:
   isolated adapters for both exact-version dependency candidates, and the
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
-- Completed in this handoff: every task from `M2.5` through `M3.5`.
+- Completed in this handoff: every task from `M2.5` through `M3.6`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -163,6 +163,19 @@ Before handing work to another agent:
     delivery can be normalized without relying on scheduling order.
   - Progress types depend only on solver/domain objective and metric types; no
     CLI, report, serialization, or UI type enters solver orchestration.
+  - Fixed efforts 1, 2, 4, 8, and 14 are objective-monotonic on both current
+    and 8/77 fixtures. Repair is derived from the canonical incumbent before
+    optional prefix work, so higher effort retains the same canonical/repair
+    floor and adds a deterministic candidate superset.
+  - Fixed effort/seed/thread settings reproduce the solution, explored and
+    validated counts, improvement count, and normalized progress; elapsed time
+    is deliberately excluded. One- and four-thread runs also return identical
+    solutions and non-time metrics. Reversing item and container arrays
+    preserves full portfolio objective quality on both representative
+    fixtures.
+  - M3's exit criterion is met: effort is monotonic, input reversal preserves
+    objective quality, fixed settings reproduce results, and the 8/77 deadline
+    test remains bounded.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
@@ -226,6 +239,14 @@ Before handing work to another agent:
   - `devenv shell -- cargo test --test progress` reported 1 passing typed-event
     and stable-work-identifier test;
   - the M3.5 strict Clippy run and release build passed;
+  - after M3.6,
+    `devenv shell -- cargo test --all-targets --all-features` reported 69
+    passing tests (15 unit and 54 integration), with no failures;
+  - `devenv shell -- cargo test --test portfolio` reported 7 passing tests,
+    including monotonic effort and current/8/77 input-reversal proofs;
+  - `devenv shell -- cargo test --test progress` reported 2 passing tests,
+    including normalized progress/non-time metric reproducibility;
+  - the M3.6 strict Clippy run and release build passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -285,18 +306,19 @@ Before handing work to another agent:
   `src/solver/portfolio.rs`, and `tests/portfolio.rs`.
 - Changed files in M3.5: `README.md`, `REWRITE_PLAN.md`, `src/solver/mod.rs`,
   `src/solver/portfolio.rs`, and `tests/progress.rs`.
+- Changed files in M3.6: `README.md`, `REWRITE_PLAN.md`, `src/solver/mod.rs`,
+  `src/solver/portfolio.rs`, `tests/portfolio.rs`, and `tests/progress.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. The in-tree clean-room constructive
   backend is selected by ADR 0001; both evaluated dependencies are rejected.
 - Decision register changes: D-005 is now `LOCKED`.
-- Remaining blockers: none for `M3.6`. Automated dual-platform CI remains
+- Remaining blockers: none for `M4.1`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M3.6`, prove that increased fixed effort retains or
-  improves the incumbent and that fixed effort, seed, and thread settings
-  reproduce solutions, aggregate metrics other than elapsed time, and
-  normalized structured progress.
+- Exact next task: `M4.1`, connect the selected portfolio, effort presets,
+  deadline, seed, and thread controls to compatible JSON and HTML output while
+  keeping compatibility mapping and report generation outside solver modules.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -589,7 +611,7 @@ Exit: existing input produces compatible JSON/HTML from a validated fixture.
 Exit: selected solver is demonstrably valid, portable, and better than the old
 saved result or has a documented gap and next experiment.
 
-### M3 — anytime improvement engine (`IN PROGRESS`)
+### M3 — anytime improvement engine (`DONE`)
 
 - [x] `M3.1` Add deterministic portfolio work partitioning and seeded search.
 - [x] `M3.2` Add deadline cancellation and a validated shared incumbent.
@@ -598,13 +620,13 @@ saved result or has a documented gap and next experiment.
 - [x] `M3.4` Add bounded branch-and-bound repair for small residuals.
 - [x] `M3.5` Emit structured progress/metrics without coupling UI code to
   solver logic.
-- [ ] `M3.6` Prove through tests that increased effort retains or improves the
+- [x] `M3.6` Prove through tests that increased effort retains or improves the
   incumbent and that fixed effort/seed/thread settings reproduce results.
 
 Exit: longer presets monotonically improve or retain quality, input
 permutations preserve objective quality, and deadline behavior is bounded.
 
-### M4 — integration and hardening (`TODO`)
+### M4 — integration and hardening (`IN PROGRESS`)
 
 - [ ] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
 - [ ] `M4.2` Add malformed-input diagnostics and safe report serialization.

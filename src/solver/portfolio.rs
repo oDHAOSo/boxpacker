@@ -69,7 +69,6 @@ impl SolverBackend for PortfolioBackend {
             kind: plan.canonical.strategy.progress_kind(),
             objective,
         });
-        execute_partitions(instance, request, plan.partitions, Arc::clone(&incumbent))?;
 
         let snapshot = incumbent.snapshot()?;
         if !request.should_stop()
@@ -113,6 +112,8 @@ impl SolverBackend for PortfolioBackend {
                 objective,
             });
         }
+
+        execute_partitions(instance, request, plan.partitions, Arc::clone(&incumbent))?;
 
         let snapshot = incumbent.snapshot()?;
         let metrics = SolverMetrics::new(
