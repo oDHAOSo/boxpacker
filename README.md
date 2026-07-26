@@ -9,8 +9,10 @@ separate history and remains read-only reference material.
 The rewrite is currently implementing its compatibility shell. The legacy JSON
 input/output DTOs and command-line contract are present, and compatibility
 input dimensions are validated and converted once to exact scaled-integer
-geometry. Reporting and solver work remain milestone tasks. The proposed
-implementation and acceptance criteria are in
+geometry. The compatibility HTML report is also available as a safe static
+template backed by serialized JSON report data. Fixture adaptation and solver
+work remain milestone tasks. The proposed implementation and acceptance
+criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 
 `REWRITE_PLAN.md` is also the canonical AI handoff record. Continuing agents

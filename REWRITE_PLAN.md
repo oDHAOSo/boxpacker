@@ -2,8 +2,8 @@
 
 Status: Milestone M1 is in progress. The buildable Rust scaffold passes
 `devenv test` on ARM64 macOS and x86-64 Linux; the compatibility DTOs, CLI
-contract, and exact integer input conversion are implemented, and the safe
-HTML report template is next.
+contract, exact integer input conversion, and safe HTML report template are
+implemented, and the saved-solution adapter is next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -56,40 +56,45 @@ Before handing work to another agent:
 - Git boundary: `boxpacker/` is its own Git repository on the `main` branch,
   independent from the old reference repository. Its parent is not a Git
   repository.
-- Completed before this handoff: `M0`, `M1.1`, and `M1.2`. The buildable
-  scaffold, locked dual-platform devenv configuration, immutable current
-  input/saved-output fixtures, compatibility DTOs, and CLI contract are
-  present. No old solver or scoring code was copied.
-- Completed in this handoff: `M1.3`.
-  - `src/geometry.rs` introduces positive `u64` scaled lengths at 10 internal
-    units per input unit, an exact-f64-integer upper bound, scaled dimensions,
-    and checked `u128` volume arithmetic.
-  - `src/validate.rs` is the compatibility-to-internal validation boundary. It
-    aggregates field-addressed diagnostics for non-finite, non-positive,
-    over-precision, out-of-range, and volume-overflow inputs. Successful
-    conversion leaves no floating-point geometry.
-  - Containers and items receive typed IDs from their original array indexes.
-    Names are display data, so duplicate container and item names remain legal
-    and map back through the validated instance.
-  - Tests cover the current 6-container/57-item fixture, exact scaling,
-    100,000 one-decimal values, conversion limits, every validation category,
-    checked volume overflow, stable IDs, and duplicate names.
+- Completed before this handoff: `M0`, `M1.1`, `M1.2`, and `M1.3`. The
+  buildable scaffold, locked dual-platform devenv configuration, immutable
+  current input/saved-output fixtures, compatibility DTOs, CLI contract, and
+  exact validated integer geometry boundary are present. No old solver or
+  scoring code was copied.
+- Completed in this handoff: `M1.4`.
+  - `src/report/template.html` preserves the current report's global and
+    per-container utilization metrics, Three.js container/item rendering and
+    labels, item selection/highlighting, unplaced-item list, and x-ray
+    wireframe toggle.
+  - `src/report/mod.rs` provides an isolated report view model and renderer.
+    The full view model is serialized once as JSON; `<`, `>`, `&`, and the
+    JavaScript line/paragraph separators are escaped before the JSON is
+    embedded in the report data element, preventing names from ending the
+    script element.
+  - User-provided container and item names are inserted into the browser DOM
+    with `textContent` or drawn on the label canvas. The template does not use
+    `innerHTML` or inline click-handler interpolation.
+  - Report tests round-trip the current saved output through the embedded view
+    model, assert the preserved information and interactions, and exercise
+    names containing script-ending sequences, markup, quotes, backticks,
+    ampersands, and JavaScript line/paragraph separators.
 - Verification passed:
   - final host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, and all
     tests;
-  - `devenv shell -- cargo test --all-targets --all-features` reported 16
-    passing tests (2 unit and 14 integration), with no failures;
+  - `devenv shell -- cargo test --all-targets --all-features` reported 19
+    passing tests (2 unit and 17 integration), with no failures;
   - `devenv shell -- cargo clippy --all-targets --all-features -- -D warnings`
     passed;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
-- Development-test note: the first full host-authorized gate exposed a test
-  assertion that directly compared `NaN` values. The assertion was corrected
-  to inspect the structured error variant and `is_nan()`; the implementation
-  did not require weakening. The final full gate passed.
-- Environment note: the first sandboxed
-  `devenv shell -- cargo fmt --all` attempt could not open
+- Development-test note: the first host-authorized `devenv test` run exposed
+  one rustfmt-only line-wrap difference in `tests/report.rs`. The file was
+  formatted without changing behavior and the final full gate passed. An
+  optional standalone JavaScript syntax probe could not run because `node` is
+  not installed (`zsh: command not found: node`); the report safety and
+  interaction contract is covered by the passing Rust integration tests.
+- Environment note: the first sandboxed `devenv test` attempt could not open
   `/Users/greg/.cache/nix/binary-cache-v7.sqlite` and could not connect to
   `/nix/var/nix/daemon-socket/socket`; the latter returned `Operation not
   permitted`. Host-authorized devenv commands passed with the same project
@@ -102,15 +107,13 @@ Before handing work to another agent:
 
   ```sh
   devenv test
-  devenv shell -- cargo fmt --all
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
   devenv shell -- cargo test --all-targets --all-features
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
-- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`,
-  `src/geometry.rs`, `src/lib.rs`, `src/validate.rs`,
-  `tests/compatibility.rs`, and `tests/geometry_properties.rs`.
+- Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`, `src/lib.rs`,
+  `src/report/mod.rs`, `src/report/template.html`, and `tests/report.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
@@ -118,10 +121,9 @@ Before handing work to another agent:
 - Decision register changes: none.
 - Remaining blockers: none for the current milestone. Automated
   dual-platform CI remains planned as `M4.4`.
-- Exact next task: `M1.4`, port the current HTML report into
-  `src/report/template.html` and a report module while preserving its
-  information and interactions. Serialize report data safely as JSON, escape
-  script-ending sequences, and do not copy old packing or scoring code.
+- Exact next task: `M1.5`, add a temporary compatibility adapter that reads the
+  known saved solution for report and independent validator testing. Keep the
+  adapter outside solver logic and do not copy old packing or scoring code.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -390,7 +392,7 @@ local host-policy limitation documented.
   modify the originals or import old solver code.
 - [x] `M1.2` Port only the input/output DTOs and CLI contract.
 - [x] `M1.3` Add exact integer conversion and field-specific input validation.
-- [ ] `M1.4` Port the current HTML report into a safe template.
+- [x] `M1.4` Port the current HTML report into a safe template.
 - [ ] `M1.5` Add a temporary adapter that can read the known saved solution for
   report and validator testing.
 - [ ] `M1.6` Record fixture baseline metrics in an asserted regression test.

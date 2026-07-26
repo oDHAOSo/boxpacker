@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BoxPacker Pro | Metrics &amp; Interaction</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #0a0a0a; font-family: "Segoe UI", sans-serif; color: white; }
+        #ui { position: absolute; top: 20px; right: 20px; width: 360px; background: rgba(25, 25, 25, 0.98); padding: 20px; border-radius: 12px; border: 1px solid #444; max-height: 92vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7); z-index: 1000; }
+        h2 { margin: 0 0 15px; color: #4d79ff; font-size: 1.2em; border-bottom: 1px solid #333; padding-bottom: 10px; }
+
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; background: #111; padding: 12px; border-radius: 8px; border: 1px solid #333; }
+        .metric-card { font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-value { font-size: 1.05em; color: #4dff4d; font-weight: bold; margin-top: 2px; }
+
+        .section-title { font-size: 0.8em; text-transform: uppercase; color: #aaa; margin: 20px 0 10px; font-weight: bold; letter-spacing: 1px; }
+        .container-card { background: #1a1a1a; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #4d79ff; }
+        .item-list { margin-top: 8px; }
+        .item-row { display: flex; justify-content: space-between; padding: 6px 8px; border-bottom: 1px solid #222; cursor: pointer; border-radius: 4px; font-size: 0.85em; }
+        .item-row:hover { background: #333; color: #4d79ff; }
+        .item-dimensions { color: #666; }
+
+        .unplaced-section { background: #2a1515; padding: 12px; border-radius: 8px; border-left: 4px solid #ff4d4d; }
+        .item-tag { display: inline-block; background: #444; padding: 2px 8px; border-radius: 4px; margin: 2px; font-size: 0.75em; color: #eee; }
+        .btn { background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-bottom: 10px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h2>Logistics Overview</h2>
+        <div id="global-metrics" class="metrics-grid"></div>
+
+        <div class="section-title">Containers</div>
+        <div id="containers-list"></div>
+
+        <div class="section-title">Unplaced Items</div>
+        <div id="unplaced-list"></div>
+
+        <button id="wireframe-toggle" class="btn" type="button">Toggle X-Ray View</button>
+    </div>
+
+    <script id="boxpacker-report-data" type="application/json">__BOXPACKER_REPORT_DATA__</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        "use strict";
+
+        const reportData = JSON.parse(document.getElementById("boxpacker-report-data").textContent);
+        const containers = reportData.containers;
+        const unplaced = reportData.unplaced_items;
+        const meshes = [];
+        let highlightedObject = null;
+        let rainbowTimer = 0;
+
+        function appendMetric(parent, label, value, color) {
+            const card = document.createElement("div");
+            card.className = "metric-card";
+            card.append(document.createTextNode(label));
+
+            const metricValue = document.createElement("div");
+            metricValue.className = "metric-value";
+            if (color) {
+                metricValue.style.color = color;
+            }
+            metricValue.textContent = value;
+            card.append(metricValue);
+            parent.append(card);
+        }
+
+        let totalContainerVolume = 0;
+        let totalUsedVolume = 0;
+        let totalItemsVolume = 0;
+
+        containers.forEach((container) => {
+            totalContainerVolume += container.width * container.height * container.length;
+            container.placed_items.forEach((item) => {
+                const volume = item.coords.w * item.coords.l * item.coords.h;
+                totalUsedVolume += volume;
+                totalItemsVolume += volume;
+            });
+        });
+        unplaced.forEach((item) => {
+            totalItemsVolume += item.width * item.length * item.height;
+        });
+
+        const unplacedVolume = totalItemsVolume - totalUsedVolume;
+        const unusedCapacity = totalContainerVolume - totalUsedVolume;
+        const globalUtilization = totalContainerVolume === 0
+            ? "0.0"
+            : ((totalUsedVolume / totalContainerVolume) * 100).toFixed(1);
+        const globalMetrics = document.getElementById("global-metrics");
+
+        appendMetric(globalMetrics, "Container Vol", totalContainerVolume.toLocaleString());
+        appendMetric(globalMetrics, "Content Vol", totalItemsVolume.toLocaleString(), "#4d79ff");
+        appendMetric(globalMetrics, "Used Capacity", totalUsedVolume.toLocaleString());
+        appendMetric(globalMetrics, "Unused Cap", unusedCapacity.toLocaleString(), "#ffb347");
+        appendMetric(globalMetrics, "Unplaced Vol", unplacedVolume.toLocaleString(), "#ff4d4d");
+        appendMetric(globalMetrics, "Utilization", `${globalUtilization}%`);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 30000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.append(renderer.domElement);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+
+        function createLabel(text) {
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+            canvas.width = 512;
+            canvas.height = 128;
+            context.fillStyle = "white";
+            context.font = "bold 38px Arial";
+            context.textAlign = "center";
+            context.shadowColor = "black";
+            context.shadowBlur = 8;
+            context.fillText(text, 256, 80);
+            const material = new THREE.SpriteMaterial({
+                map: new THREE.CanvasTexture(canvas),
+                depthTest: false,
+                transparent: true
+            });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(30, 7.5, 1);
+            sprite.renderOrder = 2000;
+            return sprite;
+        }
+
+        function highlightItem(id) {
+            const target = meshes.find((entry) => entry.id === id);
+            if (!target) {
+                return;
+            }
+            if (highlightedObject) {
+                highlightedObject.mesh.material.emissive.setHex(0x000000);
+                highlightedObject.mesh.scale.set(1, 1, 1);
+            }
+            highlightedObject = target;
+            rainbowTimer = 120;
+            const position = target.mesh.position;
+            controls.target.set(position.x, position.y, position.z);
+        }
+
+        let yOffset = 0;
+        let maxWidth = 0;
+        let maxLength = 0;
+        const containersList = document.getElementById("containers-list");
+
+        containers.forEach((container, containerIndex) => {
+            maxWidth = Math.max(maxWidth, container.width);
+            maxLength = Math.max(maxLength, container.length);
+
+            const containerGeometry = new THREE.BoxGeometry(
+                container.width,
+                container.height,
+                container.length
+            );
+            const wire = new THREE.LineSegments(
+                new THREE.EdgesGeometry(containerGeometry),
+                new THREE.LineBasicMaterial({ color: 0x555555 })
+            );
+            wire.position.set(
+                container.width / 2,
+                container.height / 2 + yOffset,
+                container.length / 2
+            );
+            scene.add(wire);
+
+            const card = document.createElement("div");
+            card.className = "container-card";
+            const usedVolume = container.placed_items.reduce(
+                (sum, item) => sum + item.coords.w * item.coords.l * item.coords.h,
+                0
+            );
+            const capacity = container.width * container.height * container.length;
+            const utilization = capacity === 0 ? "0.0" : ((usedVolume / capacity) * 100).toFixed(1);
+            const heading = document.createElement("strong");
+            heading.textContent = `${container.name} (${utilization}%)`;
+            card.append(heading);
+
+            const itemList = document.createElement("div");
+            itemList.className = "item-list";
+            container.placed_items.forEach((item, itemIndex) => {
+                const id = `item-${containerIndex}-${itemIndex}`;
+                const itemGeometry = new THREE.BoxGeometry(
+                    item.coords.w,
+                    item.coords.h,
+                    item.coords.l
+                );
+                const itemMaterial = new THREE.MeshLambertMaterial({
+                    color: item.color,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                const mesh = new THREE.Mesh(itemGeometry, itemMaterial);
+                mesh.position.set(
+                    item.coords.x + item.coords.w / 2,
+                    item.coords.z + item.coords.h / 2 + yOffset,
+                    item.coords.y + item.coords.l / 2
+                );
+                const label = createLabel(item.name);
+                label.position.copy(mesh.position);
+                scene.add(mesh);
+                scene.add(label);
+                meshes.push({ mesh, label, id });
+
+                const row = document.createElement("div");
+                row.className = "item-row";
+                row.addEventListener("click", () => highlightItem(id));
+
+                const name = document.createElement("span");
+                name.textContent = item.name;
+                const dimensions = document.createElement("span");
+                dimensions.className = "item-dimensions";
+                dimensions.textContent = `${item.coords.w}x${item.coords.l}x${item.coords.h}`;
+                row.append(name, dimensions);
+                itemList.append(row);
+            });
+
+            card.append(itemList);
+            containersList.append(card);
+            yOffset += container.height + 60;
+        });
+
+        const unplacedList = document.getElementById("unplaced-list");
+        if (unplaced.length === 0) {
+            unplacedList.textContent = "✓ All Packed";
+        } else {
+            const section = document.createElement("div");
+            section.className = "unplaced-section";
+            unplaced.forEach((item) => {
+                const tag = document.createElement("span");
+                tag.className = "item-tag";
+                tag.textContent = item.name;
+                section.append(tag);
+            });
+            unplacedList.append(section);
+        }
+
+        const centerX = maxWidth / 2;
+        const centerY = Math.max(0, (yOffset - 60) / 2);
+        const centerZ = maxLength / 2;
+        controls.target.set(centerX, centerY, centerZ);
+        controls.addEventListener("change", () => {
+            controls.target.x = centerX;
+            controls.target.z = centerZ;
+        });
+        camera.position.set(centerX + maxWidth * 2, centerY, centerZ + maxLength * 2);
+
+        document.getElementById("wireframe-toggle").addEventListener("click", () => {
+            meshes.forEach((entry) => {
+                entry.mesh.material.wireframe = !entry.mesh.material.wireframe;
+            });
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (rainbowTimer > 0 && highlightedObject) {
+                rainbowTimer -= 1;
+                highlightedObject.mesh.material.emissive.setHSL(
+                    (Date.now() * 0.005) % 1,
+                    1,
+                    0.5
+                );
+                highlightedObject.mesh.scale.set(1.05, 1.05, 1.05);
+                if (rainbowTimer === 0) {
+                    highlightedObject.mesh.material.emissive.setHex(0x000000);
+                    highlightedObject.mesh.scale.set(1, 1, 1);
+                }
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener("resize", () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
