@@ -66,3 +66,40 @@ fn scaled_volume_is_checked_instead_of_wrapping() {
         None
     );
 }
+
+#[test]
+fn rotations_are_exact_unique_and_deterministically_ordered() {
+    let dimensions = Dimensions::new(
+        Length::from_input_units(1.0).expect("exact width"),
+        Length::from_input_units(2.0).expect("exact length"),
+        Length::from_input_units(3.0).expect("exact height"),
+    );
+    let rotations = dimensions.unique_rotations();
+
+    assert_eq!(rotations.len(), 6);
+    assert!(rotations.windows(2).all(|pair| {
+        let left = (
+            pair[0].width().get(),
+            pair[0].length().get(),
+            pair[0].height().get(),
+        );
+        let right = (
+            pair[1].width().get(),
+            pair[1].length().get(),
+            pair[1].height().get(),
+        );
+        left < right
+    }));
+    assert!(
+        rotations
+            .iter()
+            .all(|rotation| dimensions.is_permutation_of(*rotation))
+    );
+
+    let cube = Dimensions::new(
+        Length::from_input_units(2.0).expect("exact side"),
+        Length::from_input_units(2.0).expect("exact side"),
+        Length::from_input_units(2.0).expect("exact side"),
+    );
+    assert_eq!(cube.unique_rotations(), vec![cube]);
+}

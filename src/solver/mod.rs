@@ -5,6 +5,8 @@ use std::time::{Duration, Instant};
 use crate::solution::Solution;
 use crate::validate::PackingInstance;
 
+pub mod constructive;
+
 /// Backend-independent solver entry point used by the bake-off and portfolio.
 pub trait SolverBackend: Send + Sync {
     fn name(&self) -> &str;

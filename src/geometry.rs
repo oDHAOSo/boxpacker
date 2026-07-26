@@ -81,6 +81,15 @@ impl std::error::Error for CoordinateConversionError {}
 pub struct Length(NonZeroU64);
 
 impl Length {
+    /// Construct a positive internal length that is already in scaled units.
+    #[must_use]
+    pub const fn from_scaled_units(value: u64) -> Option<Self> {
+        match NonZeroU64::new(value) {
+            Some(value) => Some(Self(value)),
+            None => None,
+        }
+    }
+
     /// Convert a compatibility-input length to exact scaled integer units.
     ///
     /// One decimal place is accepted because [`SCALE`] is ten. Geometry code
@@ -185,6 +194,31 @@ impl Dimensions {
         left.sort_unstable();
         right.sort_unstable();
         left == right
+    }
+
+    /// Enumerate every distinct axis-aligned rotation in deterministic order.
+    #[must_use]
+    pub fn unique_rotations(self) -> Vec<Self> {
+        let width = self.width;
+        let length = self.length;
+        let height = self.height;
+        let mut rotations = vec![
+            Self::new(width, length, height),
+            Self::new(width, height, length),
+            Self::new(length, width, height),
+            Self::new(length, height, width),
+            Self::new(height, width, length),
+            Self::new(height, length, width),
+        ];
+        rotations.sort_unstable_by_key(|dimensions| {
+            (
+                dimensions.width.get(),
+                dimensions.length.get(),
+                dimensions.height.get(),
+            )
+        });
+        rotations.dedup();
+        rotations
     }
 }
 

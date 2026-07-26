@@ -15,8 +15,10 @@ without certifying solver geometry, and exact regression assertions preserve
 its baseline quality metrics. The rewrite is now implementing the domain solver
 and bake-off. Backend-neutral solutions, deadlines, common metrics, provisional
 lexicographic objectives, and independent exact validation are present; the
-event-based constructive baseline is next. The proposed implementation and
-acceptance criteria are in
+clean-room event-based constructive backend now produces a deterministic,
+independently valid result that improves the saved fixture baseline. Candidate
+library adapters and the measured bake-off remain in progress. The proposed
+implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 
 `REWRITE_PLAN.md` is also the canonical AI handoff record. Continuing agents

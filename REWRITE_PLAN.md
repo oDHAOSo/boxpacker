@@ -4,7 +4,8 @@ Status: Milestone M1 is complete and Milestone M2 is in progress. The
 compatibility shell, exact geometry boundary, safe report, saved-solution
 adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
-are implemented, and the event-based constructive baseline is next.
+are implemented; the event-based constructive baseline is independently valid
+and improves the saved fixture, and candidate library adapters are next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -59,50 +60,47 @@ Before handing work to another agent:
 - Git boundary: `boxpacker/` is its own Git repository on the `main` branch,
   independent from the old reference repository. Its parent is not a Git
   repository.
-- Completed before this handoff: `M0` and all of `M1`. The buildable scaffold,
-  locked dual-platform devenv configuration, compatibility shell, exact
-  geometry boundary, safe report, saved-solution adapter, and immutable
-  baseline regression are present. No old solver or scoring code was copied.
-- Completed in this handoff: `M2.1`.
-  - `src/solution.rs` defines backend-neutral placements and candidate
-    solutions that carry no self-validation claims.
-  - `src/solver/mod.rs` defines an object-safe `SolverBackend`, reproducible
-    seed/thread requests, monotonic deadlines, common bake-off metrics, honest
-    optimality status, and explicit backend failures.
-  - `src/objective.rs` localizes the provisional D-004 volume-first
-    lexicographic ordering: unplaced volume, unplaced count, used containers,
-    unsupported area, bounding volume, then a deterministic geometry key.
-    Better values compare greater so an incumbent store can select `max`.
-  - `validate_solution` is independent of every backend and uses exact integer
-    comparisons to check ID ranges, item coverage, legal rotations, checked
-    extents, original-container bounds, and pairwise non-overlap. Face contact
-    is legal; unsupported placements remain valid but receive an objective
-    penalty.
-  - Successful validation returns checked placed/unplaced volumes, counts,
-    used-container count, unsupported area, compactness bounding volume, and a
-    deterministic key. The current 49-placement saved fixture passes this
-    independent validator.
-  - Tests exercise foreign IDs, duplicate/missing items, rotations, bounds,
-    coordinate overflow, overlap versus face contact, support scoring, every
-    provisional objective tier, deadline behavior, backend object safety,
-    metrics, and the current fixture.
+- Completed before this handoff: `M0`, all of `M1`, and `M2.1`. The
+  compatibility shell, exact geometry and independent-validation boundary,
+  backend-neutral solution contract, provisional objective, deadlines, and
+  metrics are present. No old solver or scoring code was copied.
+- Completed in this handoff: `M2.2`.
+  - `ConstructiveBackend` is a clean-room maximal-empty-space constructor
+    behind `SolverBackend`. It orders items deterministically, enumerates only
+    exact unique rotations, and places only at free-space origins derived from
+    container walls and prior item faces.
+  - Each placement splits intersecting free cuboids into face-derived residual
+    spaces; duplicate and contained spaces are pruned. Candidate deduplication
+    prevents equivalent free-space origins from being rescored.
+  - Checked candidate ranking prefers already-used containers, full support,
+    wall/item contact, compact bounding extent, residual space, low
+    fragmentation, and deterministic geometry/name tie-breaks.
+  - Deadline expiration returns a complete all-remaining-unplaced incumbent.
+    Every returned candidate is passed through the independent validator
+    before the backend reports heuristic status.
+  - The current fixture result is reproducible and independently valid:
+    53/57 items and 587,815.524 packed volume, improving the saved result's
+    49/57 and 582,885.612 without a raster step or solver dependency.
+  - Tests cover exact rotation deduplication, face-derived coordinate 6.3,
+    rotated fit, no-fit items, expired deadlines, free-space splitting and
+    dominance pruning, current-fixture reproducibility, independent validity,
+    and objective quality versus the saved baseline.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
     and the debug build;
-  - `devenv shell -- cargo test --all-targets --all-features` reported 36
-    passing tests (3 unit and 33 integration), with no failures;
+  - `devenv shell -- cargo test --all-targets --all-features` reported 44
+    passing tests (5 unit and 39 integration), with no failures;
   - `devenv shell -- cargo clippy --all-targets --all-features -- -D warnings`
     passed;
-  - `devenv shell -- cargo test --test solution_properties` reported 10
-    passing domain/validator tests;
+  - `devenv shell -- cargo test --test constructive` reported 5 passing
+    constructive-backend tests;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
-- Development-test note: focused compilation caught an incorrect method
-  receiver while summarizing validated extents (`Point` instead of its axis
-  coordinates), and later showed that `Ord::min/max` are not const-stable on
-  the pinned compiler. Selecting each point axis and making the small overlap
-  helper non-const corrected both without changing the design.
+- Development-test note: the focused constructive suite passed on its first
+  run and measured 53 placed items with 587,815.524 packed volume. That
+  evidence was promoted into an asserted objective comparison against the
+  independently validated saved baseline.
 - Environment note: host-authorized devenv was used because the prior handoff
   established that the sandbox cannot open the user Nix cache or connect to
   `/nix/var/nix/daemon-socket/socket` (`Operation not permitted`). No portable
@@ -114,27 +112,26 @@ Before handing work to another agent:
 
   ```sh
   devenv test
-  devenv shell -- cargo test --test solution_properties
+  devenv shell -- cargo test --test constructive
   devenv shell -- cargo test --all-targets --all-features
   devenv shell -- cargo clippy --all-targets --all-features -- -D warnings
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
 - Changed files in this handoff: `README.md`, `REWRITE_PLAN.md`,
-  `src/compatibility.rs`, `src/geometry.rs`, `src/lib.rs`,
-  `src/objective.rs`, `src/solution.rs`, `src/solver/mod.rs`,
-  `src/validate.rs`, and `tests/solution_properties.rs`.
+  `src/geometry.rs`, `src/solver/constructive.rs`, `src/solver/mod.rs`,
+  `tests/constructive.rs`, and `tests/geometry_properties.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
 - Solver dependencies selected: none. Section 5.1's bake-off is mandatory.
 - Decision register changes: none.
-- Remaining blockers: none for `M2.2`. Automated dual-platform CI remains
+- Remaining blockers: none for `M2.3`. Automated dual-platform CI remains
   planned as `M4.4`.
-- Exact next task: `M2.2`, implement the clean-room event-based constructive
-  baseline using unique rotations and coordinates derived only from container
-  walls and placed item faces. Independently validate its result and do not
-  introduce a solver dependency.
+- Exact next task: `M2.3`, adapt each viable `bin-packing` and `u-nesting-d3`
+  candidate behind `SolverBackend` without leaking dependency types. Preserve
+  independent validation and collect any API or model-fit blockers as bake-off
+  evidence; do not select a dependency yet.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -414,7 +411,7 @@ Exit: existing input produces compatible JSON/HTML from a validated fixture.
 
 - [x] `M2.1` Implement the domain-level `SolverBackend` interface, objective,
   deadlines, metrics, and independent solution validator.
-- [ ] `M2.2` Implement the event-based constructive baseline.
+- [x] `M2.2` Implement the event-based constructive baseline.
 - [ ] `M2.3` Adapt each viable library candidate without leaking its types past
   the backend boundary.
 - [ ] `M2.4` Add small known-answer, adversarial, current, permutation, and 8/77
