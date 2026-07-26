@@ -3,9 +3,7 @@ use std::time::{Duration, Instant};
 
 use boxpacker::model::InputData;
 use boxpacker::objective::ObjectiveValue;
-use boxpacker::solver::bin_packing::{BinPackingBackend, BinPackingStrategy};
 use boxpacker::solver::constructive::ConstructiveBackend;
-use boxpacker::solver::u_nesting::{UNestingBackend, UNestingStrategy};
 use boxpacker::solver::{SolveRequest, SolverBackend};
 use boxpacker::validate::{PackingInstance, validate_solution};
 
@@ -23,17 +21,11 @@ fn request(limit: Duration) -> SolveRequest {
 }
 
 fn backends() -> Vec<Box<dyn SolverBackend>> {
-    vec![
-        Box::new(ConstructiveBackend),
-        Box::new(BinPackingBackend::new(
-            BinPackingStrategy::ExtremePointsContactPoint,
-        )),
-        Box::new(UNestingBackend::new(UNestingStrategy::ExtremePoint)),
-    ]
+    vec![Box::new(ConstructiveBackend)]
 }
 
 #[test]
-fn fixed_seed_and_effort_reproduce_every_candidate() {
+fn fixed_seed_and_effort_reproduce_selected_backend() {
     let instance = instance(CURRENT_INPUT);
 
     for backend in backends() {
@@ -59,27 +51,23 @@ fn fixed_seed_and_effort_reproduce_every_candidate() {
 }
 
 #[test]
-fn bounded_backends_return_valid_scale_incumbents_with_shutdown_allowance() {
+fn selected_backend_returns_valid_scale_incumbent_with_shutdown_allowance() {
     let instance = instance(SCALE_INPUT);
     let limit = Duration::from_millis(5);
     let allowance = Duration::from_millis(250);
 
-    for backend in [
-        Box::new(ConstructiveBackend) as Box<dyn SolverBackend>,
-        Box::new(UNestingBackend::new(UNestingStrategy::ExtremePoint)) as Box<dyn SolverBackend>,
-    ] {
-        let started_at = Instant::now();
-        let outcome = backend
-            .solve(&instance, &request(limit))
-            .unwrap_or_else(|error| panic!("{} failed: {error}", backend.name()));
-        let wall_time = started_at.elapsed();
+    let backend = ConstructiveBackend;
+    let started_at = Instant::now();
+    let outcome = backend
+        .solve(&instance, &request(limit))
+        .unwrap_or_else(|error| panic!("{} failed: {error}", backend.name()));
+    let wall_time = started_at.elapsed();
 
-        validate_solution(&instance, outcome.solution())
-            .unwrap_or_else(|error| panic!("{} returned invalid output: {error}", backend.name()));
-        assert!(
-            wall_time <= limit + allowance,
-            "{} took {wall_time:?} for a {limit:?} budget",
-            backend.name()
-        );
-    }
+    validate_solution(&instance, outcome.solution())
+        .unwrap_or_else(|error| panic!("{} returned invalid output: {error}", backend.name()));
+    assert!(
+        wall_time <= limit + allowance,
+        "{} took {wall_time:?} for a {limit:?} budget",
+        backend.name()
+    );
 }

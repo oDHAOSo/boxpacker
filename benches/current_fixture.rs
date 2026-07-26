@@ -2,9 +2,7 @@ use std::num::NonZeroUsize;
 use std::time::Duration;
 
 use boxpacker::model::InputData;
-use boxpacker::solver::bin_packing::{BinPackingBackend, BinPackingStrategy};
 use boxpacker::solver::constructive::ConstructiveBackend;
-use boxpacker::solver::u_nesting::{UNestingBackend, UNestingStrategy};
 use boxpacker::solver::{SolveRequest, SolverBackend};
 use boxpacker::validate::PackingInstance;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
@@ -19,13 +17,7 @@ fn instance(json: &str) -> PackingInstance {
 }
 
 fn backends() -> Vec<Box<dyn SolverBackend>> {
-    vec![
-        Box::new(ConstructiveBackend),
-        Box::new(BinPackingBackend::new(
-            BinPackingStrategy::ExtremePointsContactPoint,
-        )),
-        Box::new(UNestingBackend::new(UNestingStrategy::ExtremePoint)),
-    ]
+    vec![Box::new(ConstructiveBackend)]
 }
 
 fn request() -> SolveRequest {

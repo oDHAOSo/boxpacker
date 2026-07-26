@@ -6,24 +6,28 @@ This is the clean-room Rust rewrite of the project in
 This directory is an independent Git repository. The old project beside it has
 separate history and remains read-only reference material.
 
-The compatibility-shell milestone is complete. The legacy JSON input/output
-DTOs and command-line contract are present, compatibility dimensions are
+The compatibility-shell and solver bake-off milestones are complete. The
+legacy JSON input/output DTOs and command-line contract are present,
+compatibility dimensions are
 converted once to exact scaled-integer geometry, and the HTML report is a safe
 static template backed by serialized JSON data. A temporary saved-solution
 adapter maps the current fixture back to stable input IDs and exact AABBs
 without certifying solver geometry, and exact regression assertions preserve
-its baseline quality metrics. The rewrite is now implementing the domain solver
-and bake-off. Backend-neutral solutions, deadlines, common metrics, provisional
-lexicographic objectives, and independent exact validation are present; the
+its baseline quality metrics. The rewrite now has a selected domain solver.
+Backend-neutral solutions, deadlines, common metrics, provisional lexicographic
+objectives, and independent exact validation are present; the
 clean-room event-based constructive backend now produces a deterministic,
 independently valid result that improves the saved fixture baseline. Candidate
-library adapters are isolated behind the same backend trait, but neither has
-been selected. Known-answer, adversarial, current, reversed-current, and
+library adapters were evaluated behind the same backend trait and removed
+after neither justified its production integration cost. Known-answer,
+adversarial, current, reversed-current, and
 generated 8-container/77-item fixtures now record independently validated
 objectives. The M2.5 bake-off now records release runtime, determinism,
 deadline behavior, portability, dependency cost, maintenance, and licensing in
-[`docs/bakeoff/M2.5.md`](docs/bakeoff/M2.5.md); solver selection remains
-reserved for the M2.6 ADR.
+[`docs/bakeoff/M2.5.md`](docs/bakeoff/M2.5.md); the accepted selection and
+candidate rejections are in
+[`docs/decisions/0001-solver-backend.md`](docs/decisions/0001-solver-backend.md).
+M3's deterministic portfolio and anytime improvement engine are next.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

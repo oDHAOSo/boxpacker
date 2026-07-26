@@ -3,9 +3,7 @@ use std::time::Duration;
 
 use boxpacker::model::{InputContainer, InputData, Item};
 use boxpacker::objective::ObjectiveValue;
-use boxpacker::solver::bin_packing::{BinPackingBackend, BinPackingStrategy};
 use boxpacker::solver::constructive::ConstructiveBackend;
-use boxpacker::solver::u_nesting::{UNestingBackend, UNestingStrategy};
 use boxpacker::solver::{SolveRequest, SolverBackend};
 use boxpacker::validate::{PackingInstance, SolutionSummary, validate_solution};
 
@@ -21,13 +19,7 @@ fn request() -> SolveRequest {
 }
 
 fn backends() -> Vec<Box<dyn SolverBackend>> {
-    vec![
-        Box::new(ConstructiveBackend),
-        Box::new(BinPackingBackend::new(
-            BinPackingStrategy::ExtremePointsContactPoint,
-        )),
-        Box::new(UNestingBackend::new(UNestingStrategy::ExtremePoint)),
-    ]
+    vec![Box::new(ConstructiveBackend)]
 }
 
 fn validated_instance(input: &InputData) -> PackingInstance {
@@ -109,9 +101,7 @@ fn current_fixture_and_its_reversal_produce_valid_objectives() {
     let reversed_instance = validated_instance(&reversed);
 
     for (backend, (expected_placed, expected_volume)) in
-        backends()
-            .into_iter()
-            .zip([(53, 587_815_524), (41, 535_042_896), (49, 568_460_714)])
+        backends().into_iter().zip([(53, 587_815_524)])
     {
         let original_summary = solve(backend.as_ref(), &original_instance);
         let reversed_summary = solve(backend.as_ref(), &reversed_instance);
@@ -144,11 +134,11 @@ fn generated_eight_container_seventy_seven_item_scale_fixture_is_valid() {
     assert_eq!(input.contents.len(), 77);
     let instance = validated_instance(&input);
 
-    for (backend, expected) in backends().into_iter().zip([
-        (73, 694_614_920, 8, 199_220, 836_936_280),
-        (70, 687_975_920, 8, 362_560, 807_771_800),
-        (73, 694_614_920, 8, 282_900, 830_038_000),
-    ]) {
+    for (backend, expected) in
+        backends()
+            .into_iter()
+            .zip([(73, 694_614_920, 8, 199_220, 836_936_280)])
+    {
         let summary = solve(backend.as_ref(), &instance);
         assert_eq!(
             summary.placed_item_count() + summary.unplaced_item_count(),

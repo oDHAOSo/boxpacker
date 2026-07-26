@@ -1,14 +1,15 @@
 # BoxPacker Rewrite Plan
 
-Status: Milestone M1 is complete and Milestone M2 is in progress. The
-compatibility shell, exact geometry boundary, safe report, saved-solution
+Status: Milestones M0 through M2 are complete and Milestone M3 is in progress.
+The compatibility shell, exact geometry boundary, safe report, saved-solution
 adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
 are implemented; the event-based constructive baseline is independently valid
-and improves the saved fixture, both candidate libraries are isolated behind
-the backend boundary, and the full M2.5 correctness, quality, runtime,
+and improves the saved fixture; both candidate libraries were isolated,
+evaluated, and removed; and the full M2.5 correctness, quality, runtime,
 determinism, deadline, portability, maintenance, and licensing evidence is
-recorded. The selection ADR is next.
+recorded. ADR 0001 selects the in-tree clean-room backend and rejects both
+external candidates; deterministic portfolio work partitioning is next.
 
 Reference implementation: `../oldBoxPackerForDeletion` (read-only during the
 rewrite).
@@ -56,7 +57,7 @@ Before handing work to another agent:
 
 ### Current handoff snapshot — 2026-07-26
 
-- Current milestone: `M2 — solver bake-off` (`IN PROGRESS`).
+- Current milestone: `M3 — anytime improvement engine` (`IN PROGRESS`).
 - Milestone M0 status: `DONE`; `devenv test` passed on both target platforms.
 - Milestone M1 status: `DONE`; the compatibility fixture passes its exact
   baseline regression and renders through the safe report template.
@@ -68,7 +69,7 @@ Before handing work to another agent:
   isolated adapters for both exact-version dependency candidates, and the
   fixed correctness/quality matrix are present. No old solver or scoring code
   was copied and no dependency is selected.
-- Completed in this handoff: `M2.5`.
+- Completed in this handoff: `M2.5` and `M2.6`.
   - `tests/fixtures/generated/scale_8x77.json` is a clean-room fixed-scale
     document with eight heterogeneous containers, 77 uniquely named items,
     724,566.920 item volume, and 882,287.290 capacity. Its README records its
@@ -99,12 +100,27 @@ Before handing work to another agent:
   - `docs/bakeoff/M2.5.md` records model fit, enabled dependency graphs,
     maintenance and MIT licensing evidence, native ARM64 release portability,
     and the remaining lack of post-candidate x86-64 verification.
+  - ADR 0001 selects the in-tree clean-room constructive backend. It rejects
+    `bin-packing` 0.3.0 for its measured quality/runtime loss, objective and
+    dimension mismatch, and absent deadline API. It rejects `u-nesting-d3`
+    0.6.0 because its speed does not improve the primary objective enough to
+    justify a single-boundary `f64` conversion layer and metric/seed gaps.
+  - Both rejected adapters and solver dependencies were removed. The
+    `SolverBackend` seam and exact-pinned development-only Criterion benchmark
+    remain. The selected production solver has no external version to pin.
+  - M2's exit criterion is met: the selected solver is independently valid,
+    portable without a native solver dependency, and improves the old saved
+    packed volume from 582,885.612 to 587,815.524.
 - Verification passed:
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
     and the debug build;
-  - `devenv shell -- cargo test --all-targets --all-features` reported 54
+  - before M2.6 cleanup,
+    `devenv shell -- cargo test --all-targets --all-features` reported 54
     passing tests (5 unit and 49 integration), with no failures;
+  - after M2.6 cleanup, the same command reported 50 passing tests (5 unit and
+    45 integration), with no failures; the four removed tests exercised only
+    the rejected adapters and their evidence remains in the M2.5 commit;
   - `devenv shell -- cargo clippy --all-targets --all-features -- -D warnings`
     passed;
   - `devenv shell -- cargo test --test bakeoff_fixtures` reported 4 passing
@@ -114,6 +130,9 @@ Before handing work to another agent:
   - `devenv shell -- cargo bench --bench current_fixture -- --noplot`
     completed all six release benchmark groups;
   - `devenv shell -- cargo build --release` passed on native ARM64 macOS;
+  - the post-selection release build, strict Clippy run, and final
+    `devenv test` gate passed with no solver dependency in the production
+    graph;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -121,6 +140,10 @@ Before handing work to another agent:
   root` because the Nix daemon socket returned `Operation not permitted`.
   Host-authorized locked-devenv reruns were used; no portable configuration was
   weakened.
+- M2.6 development-test note: the first strict Clippy run identified a
+  single-element loop left by reducing a deadline matrix to the selected
+  backend. The test was simplified, then formatting, strict Clippy, and
+  `devenv test` all passed.
 - Environment note: host-authorized devenv was used because the prior handoff
   established that the sandbox cannot open the user Nix cache or connect to
   `/nix/var/nix/daemon-socket/socket` (`Operation not permitted`). No portable
@@ -145,19 +168,26 @@ Before handing work to another agent:
   git diff --check
   git -C ../oldBoxPackerForDeletion status --short --branch
   ```
-- Changed files in this handoff: `Cargo.lock`, `Cargo.toml`, `README.md`,
+- Changed files in M2.5: `Cargo.lock`, `Cargo.toml`, `README.md`,
+  `REWRITE_PLAN.md`, `benches/current_fixture.rs`, `docs/bakeoff/M2.5.md`, and
+  `tests/bakeoff_evaluation.rs`.
+- Changed files in M2.6: `Cargo.lock`, `Cargo.toml`, `README.md`,
   `REWRITE_PLAN.md`, `benches/current_fixture.rs`,
-  `docs/bakeoff/M2.5.md`, and `tests/bakeoff_evaluation.rs`.
+  `docs/bakeoff/M2.5.md`, `docs/decisions/0001-solver-backend.md`,
+  `src/solver/mod.rs`, `tests/bakeoff_evaluation.rs`, and
+  `tests/bakeoff_fixtures.rs`; removed `src/solver/bin_packing.rs`,
+  `src/solver/u_nesting.rs`, and `tests/candidate_adapters.rs`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
-- Solver dependencies selected: none. Section 5.1's bake-off is mandatory.
-- Decision register changes: none.
-- Remaining blockers: none for `M2.6`. Automated post-candidate
-  dual-platform CI remains planned as `M4.4`.
-- Exact next task: `M2.6`, record an ADR selecting the clean-room backend or a
-  dependency adapter, explicitly accept or reject each exact-version candidate,
-  and retain only dependencies justified by that decision.
+- Solver dependencies selected: none. The in-tree clean-room constructive
+  backend is selected by ADR 0001; both evaluated dependencies are rejected.
+- Decision register changes: D-005 is now `LOCKED`.
+- Remaining blockers: none for `M3.1`. Automated dual-platform CI remains
+  planned as `M4.4`.
+- Exact next task: `M3.1`, add deterministic portfolio work partitioning and
+  seeded search around the selected constructive backend without introducing a
+  dependency or changing exact geometry.
 - Open user/product decision: whether packed volume or packed item count is the
   first tie-break when not all items can fit. Continue with the provisional
   volume-first objective until the decision is made; the objective type must
@@ -171,7 +201,7 @@ Before handing work to another agent:
 | D-002 | LOCKED | Use a clean-room solver; old packing and weighted scoring code are reference-only. |
 | D-003 | LOCKED | Use checked scaled-integer geometry; no raster step size or floating-point collision logic. |
 | D-004 | PROVISIONAL | Rank unplaced volume before unplaced item count; awaiting product confirmation. |
-| D-005 | OPEN | Select solver libraries only after the M2 correctness/quality bake-off. |
+| D-005 | LOCKED | Select the in-tree clean-room backend; reject and remove both evaluated solver dependencies per ADR 0001. |
 | D-006 | DEFERRED | Add native MILP/CP-SAT only if measured quality justifies its portability cost. |
 | D-007 | LOCKED | Keep `boxpacker/` as its own Git repository on `main`, separate from the old reference repository. |
 
@@ -433,7 +463,7 @@ local host-policy limitation documented.
 
 Exit: existing input produces compatible JSON/HTML from a validated fixture.
 
-### M2 — solver bake-off (`IN PROGRESS`)
+### M2 — solver bake-off (`DONE`)
 
 - [x] `M2.1` Implement the domain-level `SolverBackend` interface, objective,
   deadlines, metrics, and independent solution validator.
@@ -444,13 +474,13 @@ Exit: existing input produces compatible JSON/HTML from a validated fixture.
   fixtures.
 - [x] `M2.5` Benchmark correctness, objective quality, runtime, determinism,
   portability, maintenance, and licensing.
-- [ ] `M2.6` Record an ADR selecting or rejecting each dependency and pin the
+- [x] `M2.6` Record an ADR selecting or rejecting each dependency and pin the
   selected versions.
 
 Exit: selected solver is demonstrably valid, portable, and better than the old
 saved result or has a documented gap and next experiment.
 
-### M3 — anytime improvement engine (`TODO`)
+### M3 — anytime improvement engine (`IN PROGRESS`)
 
 - [ ] `M3.1` Add deterministic portfolio work partitioning and seeded search.
 - [ ] `M3.2` Add deadline cancellation and a validated shared incumbent.
