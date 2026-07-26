@@ -68,8 +68,8 @@ native ARM64 macOS and x86-64 Linux runners. Algorithm/status semantics,
 reproducibility limits, presets, and status meanings are documented in
 [`docs/usage.md`](docs/usage.md).
 All planned rewrite implementation tasks are complete, and the product has
-confirmed the volume-first objective. Final M4 exit awaits the first hosted run
-of the checked-in native ARM64 macOS/x86-64 Linux workflow.
+confirmed the volume-first objective. The first hosted run of the checked-in
+native ARM64 macOS/x86-64 Linux workflow passed, completing M4.
 The proposed implementation and acceptance criteria are in
 [`REWRITE_PLAN.md`](REWRITE_PLAN.md).
 

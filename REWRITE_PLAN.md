@@ -1,7 +1,6 @@
 # BoxPacker Rewrite Plan
 
-Status: Milestones M0 through M3 and all M4 implementation tasks are complete;
-final M4 exit awaits a first hosted dual-platform CI run.
+Status: Milestones M0 through M4 are complete.
 The compatibility shell, exact geometry boundary, safe report, saved-solution
 adapter, and immutable baseline metrics pass `devenv test`; the domain solver
 interface, objective, deadlines, metrics, and independent solution validator
@@ -64,8 +63,7 @@ Before handing work to another agent:
 
 ### Current handoff snapshot — 2026-07-26
 
-- Current milestone: `M4 — integration and hardening` (`BLOCKED` on first
-  hosted dual-platform CI evidence).
+- Current milestone: `M4 — integration and hardening` (`DONE`).
 - Milestone M0 status: `DONE`; `devenv test` passed on both target platforms.
 - Milestone M1 status: `DONE`; the compatibility fixture passes its exact
   baseline regression and renders through the safe report template.
@@ -248,10 +246,15 @@ Before handing work to another agent:
     same-ref runs, caps jobs at 15 minutes, and pins `actions/checkout` v6.0.2
     by full commit SHA. Nightly fuzz tooling remains intentionally outside the
     stable production matrix per D-009.
-  - This repository has no configured remote and the instruction forbids a
-    push, so the new workflow has not run on GitHub. Local YAML parsing and
-    pinned `actionlint` validation pass; a first hosted run remains required
-    before claiming current post-integration evidence on both platforms.
+  - The repository is now connected to `origin` at
+    `git@github.com:oDHAOSo/boxpacker.git`. The first hosted
+    [CI run](https://github.com/oDHAOSo/boxpacker/actions/runs/30219946197)
+    passed on pushed commit
+    `6ccfacdeb9d5fdcac194bf4fa155e0f435986edd`.
+  - Hosted jobs `stable / arm64-macos` on `macos-15` and
+    `stable / x86_64-linux` on `ubuntu-24.04` both passed their native
+    architecture assertion, formatting, warnings-denied Clippy, all-target
+    tests, and locked release build on the first attempt.
   - `docs/usage.md` now documents the compatibility command/output contract,
     locked volume-first lexicographic objective, clean-room maximal-space
     portfolio, neighborhoods, bounded residual repair, preset work/deadline
@@ -398,6 +401,11 @@ Before handing work to another agent:
   - after product confirmation locked D-004, the host-authorized
     `devenv test` gate passed with the existing volume-before-count objective
     proofs renamed from provisional terminology;
+  - GitHub Actions run `30219946197` passed against pushed commit
+    `6ccfacdeb9d5fdcac194bf4fa155e0f435986edd`; both native matrix jobs and
+    every required step completed successfully;
+  - the final host-authorized `devenv test` gate passed after recording the
+    hosted evidence and marking M4 complete;
   - `git diff --check` passed;
   - the old project's status was unchanged after implementation.
 - Development-test note: sandboxed devenv attempts for the M2.5 production
@@ -414,10 +422,9 @@ Before handing work to another agent:
   `/nix/var/nix/daemon-socket/socket` (`Operation not permitted`). No portable
   project configuration was changed. Cargo network access downloaded the two
   exact candidate versions and their locked transitive dependencies.
-- Prior cross-platform evidence remains valid for the pre-candidate project:
-  `devenv test` passed on native ARM64 macOS and in an isolated x86-64
-  QEMU/Colima Linux guest. Candidate dependencies were added after that run;
-  automated dual-platform verification remains `M4.4`.
+- Current post-integration cross-platform evidence is the successful hosted
+  run above. Earlier native ARM64 macOS and isolated x86-64 QEMU/Colima Linux
+  `devenv test` results remain historical supporting evidence.
 - Principal verification commands used in this handoff:
 
   ```sh
@@ -490,6 +497,8 @@ Before handing work to another agent:
 - Changed files resolving D-004: `README.md`, `REWRITE_PLAN.md`,
   `docs/bakeoff/M2.5.md`, `docs/decisions/0001-solver-backend.md`,
   `docs/usage.md`, `src/objective.rs`, and `tests/solution_properties.rs`.
+- Changed files recording final hosted evidence: `README.md` and
+  `REWRITE_PLAN.md`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
@@ -499,11 +508,9 @@ Before handing work to another agent:
   `LOCKED`. Product confirmation resolved D-004 in favor of greatest packed
   volume before packed item count; this matches the implemented ordering, so
   only comments, test names, and documentation changed.
-- Remaining blocker for final M4 exit: the first hosted dual-platform workflow
-  run. This repository has no remote and pushing is outside the authorized
-  scope, so hosted evidence requires an external repository/CI action.
-- Exact next task: configure or use the intended hosted repository, run the
-  existing CI workflow on both native matrix entries, and record the results.
+- Remaining blockers for the rewrite plan: none.
+- Exact next task: no rewrite milestone remains. Begin only explicitly scoped
+  follow-on work, using Section 9 for deliberately deferred features.
 - Resolved product decision: when not all items fit, maximize total packed
   volume before considering packed item count.
 
@@ -811,7 +818,7 @@ saved result or has a documented gap and next experiment.
 Exit: longer presets monotonically improve or retain quality, input
 permutations preserve objective quality, and deadline behavior is bounded.
 
-### M4 — integration and hardening (`BLOCKED`)
+### M4 — integration and hardening (`DONE`)
 
 - [x] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
 - [x] `M4.2` Add malformed-input diagnostics and safe report serialization.
