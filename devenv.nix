@@ -3,7 +3,9 @@
 {
   packages = [
     pkgs.cargo-edit
+    pkgs.git
     pkgs.jq
+    pkgs.openssh
   ];
 
   languages.rust = {

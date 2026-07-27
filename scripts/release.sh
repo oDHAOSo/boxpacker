@@ -19,15 +19,16 @@ restore_uncommitted_version_change() {
 command -v cargo >/dev/null || fail "cargo is not available"
 command -v jq >/dev/null || fail "jq is not available"
 command -v git >/dev/null || fail "git is not available"
+command -v ssh >/dev/null || fail "ssh is not available"
 
 release_version="$(
   printf '%s\n' "$DEVENV_TASK_INPUT" |
     jq -er '.version | select(type == "string" and length > 0)'
 )" || fail "pass --input version=MAJOR.MINOR.PATCH"
 
-printf '%s\n' "$release_version" |
-  grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' ||
+if [[ ! "$release_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   fail "version must use the stable MAJOR.MINOR.PATCH form"
+fi
 
 release_tag="v$release_version"
 current_branch="$(git branch --show-current)"
