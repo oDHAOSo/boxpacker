@@ -270,8 +270,8 @@ devenv test
 ```
 
 `devenv test` checks formatting, runs Clippy with warnings denied, and runs all
-test targets. The same checks run in CI on ARM64 macOS, ARM64 Linux, and x86-64
-Linux.
+test targets. The same checks run in CI on ARM64 macOS, ARM64 and x86-64 Linux,
+and ARM64 and x86-64 Windows.
 
 Design background and benchmark evidence live in
 [the solver decision record](docs/decisions/0001-solver-backend.md) and

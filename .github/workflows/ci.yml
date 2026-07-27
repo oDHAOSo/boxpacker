@@ -30,6 +30,12 @@ jobs:
           - name: x86_64-linux
             runner: ubuntu-24.04
             uname: x86_64
+          - name: arm64-windows
+            runner: windows-11-arm
+            uname: aarch64
+          - name: x86_64-windows
+            runner: windows-2025
+            uname: x86_64
     env:
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: "1"
