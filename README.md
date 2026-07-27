@@ -68,17 +68,8 @@ native ARM64 macOS plus ARM64 and x86-64 Linux runners. Algorithm/status
 semantics, reproducibility limits, presets, and status meanings are documented
 in
 [`docs/usage.md`](docs/usage.md).
-All planned rewrite implementation tasks are complete, and the product has
-confirmed the volume-first objective. The first hosted run of the checked-in
-native ARM64 macOS/x86-64 Linux workflow passed, completing M4.
-The proposed implementation and acceptance criteria are in
-[`REWRITE_PLAN.md`](REWRITE_PLAN.md).
-
-`REWRITE_PLAN.md` is also the canonical AI handoff record. Continuing agents
-must update its current snapshot, task checkboxes, decision register, and
-verification evidence before ending a handoff.
-Repository-level agent instructions in [`AGENTS.md`](AGENTS.md) direct future
-agents to that record automatically.
+The clean-room solver rewrite and native three-platform CI integration are
+complete, and the product has confirmed the volume-first objective.
 
 ## Development environment
 

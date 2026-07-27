@@ -1,18 +1,10 @@
-# BoxPacker Rewrite Agent Instructions
+# BoxPacker Development Instructions
 
-These instructions apply to the entire rewrite project.
+These instructions apply to the entire project.
 
-1. Read `REWRITE_PLAN.md` completely before making changes. It is the canonical
-   specification, task tracker, decision register, and handoff record.
-2. Treat `../oldBoxPackerForDeletion` as read-only reference material. Preserve
+1. Treat `../oldBoxPackerForDeletion` as read-only reference material. Preserve
    its working-tree state and do not port its packing or scoring implementation.
-3. Work from the first unchecked task in the current milestone unless the
-   handoff snapshot explicitly identifies a different next task or blocker.
-4. Keep compatibility I/O, exact geometry, solver backends, independent
+2. Keep compatibility I/O, exact geometry, solver backends, independent
    validation, and reporting separated at their documented boundaries.
-5. Run the checks required by the active milestone. Prefer `devenv test`; record
-   exact host-policy limitations and fallback checks when devenv cannot run.
-6. Before ending a handoff, update the plan's dated snapshot, task statuses,
-   decisions, verification evidence, blockers, changed files, and exact next
-   task.
-
+3. Prefer `devenv test` for the full project check. If host policy prevents it,
+   run the closest pinned-toolchain checks available and report the limitation.
