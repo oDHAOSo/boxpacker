@@ -238,10 +238,11 @@ Before handing work to another agent:
     current-fixture means are 555.26 µs, 839.48 µs, 2.4512 ms, and 3.8603 ms;
     8/77 means are 815.17 µs, 1.0475 ms, 3.2945 ms, and 5.4898 ms.
   - `.github/workflows/ci.yml` adds native `macos-15` ARM64 and
-    `ubuntu-24.04` x86-64 jobs. Each job verifies `uname -m`, installs the
-    stable minimal Rust profile with rustfmt and Clippy, and runs formatting,
-    warnings-denied Clippy, all targets/features, and a release build with the
-    Cargo lock enforced.
+    `ubuntu-24.04` x86-64 jobs. Follow-on Nix packaging adds an
+    `ubuntu-24.04-arm` ARM64 Linux job. Each job verifies `uname -m`, installs
+    the stable minimal Rust profile with rustfmt and Clippy, and runs
+    formatting, warnings-denied Clippy, all targets/features, and a release
+    build with the Cargo lock enforced.
   - The workflow grants only read access to repository contents, cancels stale
     same-ref runs, caps jobs at 15 minutes, and pins `actions/checkout` v6.0.2
     by full commit SHA. Nightly fuzz tooling remains intentionally outside the
@@ -269,7 +270,37 @@ Before handing work to another agent:
     test asserts the real fast-preset summary, and documentation states that
     the current portfolio always reports `heuristic`; bounded repair
     exhaustion never upgrades the global claim.
+- Completed in explicitly scoped follow-on packaging:
+  - `flake.nix` exposes `boxpacker` and default package/app outputs for
+    `aarch64-darwin`, `aarch64-linux`, and `x86_64-linux`, with no duplicate
+    development shell because devenv remains the sole development environment.
+  - `buildRustPackage` uses the checked-in Cargo lock and a minimal source
+    closure containing the manifest, Rust sources, tests, and declared
+    benchmark. `flake.lock` pins nixpkgs unstable.
+  - The README documents direct `nix run`, profile installation, and
+    consumption from another flake.
+  - Root `input.json` is the byte-identical current compatibility fixture, so
+    the documented default CLI invocation has an immediately usable input.
+  - The native CI matrix now covers the flake's three supported targets:
+    `aarch64-darwin`, `aarch64-linux`, and `x86_64-linux`. The new Linux ARM64
+    job uses GitHub's `ubuntu-24.04-arm` runner and asserts `uname -m` is
+    `aarch64`.
 - Verification passed:
+  - final package and app outputs evaluated for all three supported systems at
+    locked nixpkgs revision `e2587caef70cea85dd97d7daab492899902dbf5d`;
+  - the final filtered native `aarch64-darwin` derivation built successfully to
+    `/nix/store/whwdrmd37hz1xki67k98399qrs7k39wi-boxpacker-0.1.0`;
+  - the packaged executable's `--help` output exposed the expected BoxPacker
+    options;
+  - Ruby/Psych parsed the expanded workflow as a YAML mapping and actionlint
+    1.7.12 reported no errors;
+  - the follow-on host-authorized `devenv test` gate passed; filtered
+    `git diff --check` passed for every non-fixture change, while root
+    `input.json` intentionally retains the compatibility fixture's documented
+    trailing spaces;
+  - root `input.json` matched `tests/fixtures/current/input.json` byte-for-byte
+    at SHA-256
+    `0bd68c67409195ae2d70369fcef1ceefc9978f31a3a3a91c56f6dba0fea06b37`;
   - host-authorized `devenv test` passed on ARM64 macOS with the locked
     environment, including formatting, Clippy with warnings denied, all tests,
     and the debug build;
@@ -499,6 +530,9 @@ Before handing work to another agent:
   `docs/usage.md`, `src/objective.rs`, and `tests/solution_properties.rs`.
 - Changed files recording final hosted evidence: `README.md` and
   `REWRITE_PLAN.md`.
+- Changed files in follow-on Nix packaging and CI: `flake.nix`, `flake.lock`,
+  `.github/workflows/ci.yml`, `README.md`, `docs/usage.md`, `input.json`, and
+  `REWRITE_PLAN.md`.
 - Old-project state rechecked before and after implementation:
   `M src/main.rs`, `?? output.html`, and `?? output.old.html`. All three remain
   user-owned and unchanged by this handoff.
@@ -509,6 +543,12 @@ Before handing work to another agent:
   volume before packed item count; this matches the implemented ordering, so
   only comments, test names, and documentation changed.
 - Remaining blockers for the rewrite plan: none.
+- Follow-on CI status: local workflow syntax and policy checks pass; the new
+  `stable / aarch64-linux` job awaits its first hosted run.
+- Follow-on packaging test note: after staging the flake so Git excluded
+  ignored build artifacts, final `nix flake check . --all-systems` passed.
+  Package derivations and app outputs evaluated for all three declared systems;
+  the native derivation had already built and run successfully.
 - Exact next task: no rewrite milestone remains. Begin only explicitly scoped
   follow-on work, using Section 9 for deliberately deferred features.
 - Resolved product decision: when not all items fit, maximize total packed
@@ -526,8 +566,8 @@ Before handing work to another agent:
 | D-006 | DEFERRED | Add native MILP/CP-SAT only if measured quality justifies its portability cost. |
 | D-007 | LOCKED | Keep `boxpacker/` as its own Git repository on `main`, separate from the old reference repository. |
 | D-008 | LOCKED | Use exact-pinned `serde_path_to_error` only at the compatibility-input boundary for actionable DTO paths. |
-| D-009 | LOCKED | Keep exact-pinned libFuzzer targets in an isolated nightly-only package; stable production and dual-platform gates remain independent. |
-| D-010 | LOCKED | Gate native ARM64 macOS and x86-64 Linux with a least-privilege workflow and a full-SHA-pinned checkout action. |
+| D-009 | LOCKED | Keep exact-pinned libFuzzer targets in an isolated nightly-only package; stable production and three-platform gates remain independent. |
+| D-010 | LOCKED | Gate native ARM64 macOS and ARM64/x86-64 Linux with a least-privilege workflow and a full-SHA-pinned checkout action. |
 | D-011 | LOCKED | Current portfolio status is always `heuristic`; restricted repair exhaustion never implies global optimality. |
 
 ## 1. Objective and boundaries
@@ -542,7 +582,7 @@ program that are already useful:
 - Initially preserve the report's information and interaction model. Report and
   input-format enhancements are separate follow-up work.
 - Use devenv as the only documented development environment. It must work
-  natively on ARM64 macOS and x86-64 Linux.
+  natively on ARM64 macOS and ARM64/x86-64 Linux.
 - Optimize packing quality under a user-visible time budget. Do not claim a
   global optimum unless an exact search proves it.
 
@@ -752,8 +792,8 @@ certify its own output.
   geometry-resolution constants.
 
 CI must run formatting, Clippy with warnings denied, tests, and release builds
-on both `aarch64-darwin` and `x86_64-linux`. Quality benchmarks should be
-recorded separately from noisy wall-clock CI checks.
+on `aarch64-darwin`, `aarch64-linux`, and `x86_64-linux`. Quality benchmarks
+should be recorded separately from noisy wall-clock CI checks.
 
 ## 8. Implementation milestones
 
@@ -823,7 +863,7 @@ permutations preserve objective quality, and deadline behavior is bounded.
 - [x] `M4.1` Connect the selected solver to compatible JSON and HTML outputs.
 - [x] `M4.2` Add malformed-input diagnostics and safe report serialization.
 - [x] `M4.3` Complete property tests, fuzz targets, and release benchmarks.
-- [x] `M4.4` Add dual-platform CI for ARM64 macOS and x86-64 Linux.
+- [x] `M4.4` Add native CI for ARM64 macOS and ARM64/x86-64 Linux.
 - [x] `M4.5` Document algorithm/status semantics, presets, reproducibility, and
   optimality claims.
 - [x] `M4.6` Update the handoff snapshot with final evidence and remove

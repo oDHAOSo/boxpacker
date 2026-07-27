@@ -24,6 +24,9 @@ jobs:
           - name: arm64-macos
             runner: macos-15
             uname: arm64
+          - name: aarch64-linux
+            runner: ubuntu-24.04-arm
+            uname: aarch64
           - name: x86_64-linux
             runner: ubuntu-24.04
             uname: x86_64

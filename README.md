@@ -64,8 +64,9 @@ targets without changing the stable production toolchain. Criterion records
 solve-plus-independent-validation performance for every production preset on
 both representative fixtures. A GitHub Actions matrix now runs the locked
 stable format, strict Clippy, all-target test, and release-build gates on
-native ARM64 macOS and x86-64 Linux runners. Algorithm/status semantics,
-reproducibility limits, presets, and status meanings are documented in
+native ARM64 macOS plus ARM64 and x86-64 Linux runners. Algorithm/status
+semantics, reproducibility limits, presets, and status meanings are documented
+in
 [`docs/usage.md`](docs/usage.md).
 All planned rewrite implementation tasks are complete, and the product has
 confirmed the volume-first objective. The first hosted run of the checked-in
@@ -97,4 +98,24 @@ devenv test
 
 The configuration uses the stable Rust toolchain and has no
 architecture-specific packages, so the same files are intended to work on
-both `aarch64-darwin` and `x86_64-linux`.
+`aarch64-darwin`, `aarch64-linux`, and `x86_64-linux`.
+
+## Nix installation
+
+The flake packages BoxPacker for `aarch64-darwin`, `aarch64-linux`, and
+`x86_64-linux`.
+
+Run it without installing:
+
+```sh
+nix run github:oDHAOSo/boxpacker -- --help
+```
+
+Install it into your user profile:
+
+```sh
+nix profile install github:oDHAOSo/boxpacker
+```
+
+Or add the repository as an input to another flake and use
+`boxpacker.packages.${system}.default`.

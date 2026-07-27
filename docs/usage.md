@@ -129,5 +129,6 @@ not cross-machine latency guarantees.
 - The report loads Three.js from external CDNs.
 - Coverage-guided fuzzing requires the isolated nightly package documented in
   `../fuzz/README.md`.
-- The checked-in dual-platform workflow still needs its first hosted run before
-  current post-integration ARM64 macOS and x86-64 Linux evidence is complete.
+- The newly expanded three-platform workflow needs its first hosted run before
+  native ARM64 Linux evidence is complete. The earlier ARM64 macOS and x86-64
+  Linux matrix passed.
