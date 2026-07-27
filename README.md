@@ -90,9 +90,14 @@ Non-Nix users can download a prebuilt archive from the
 | ARM64 macOS | `aarch64-apple-darwin.tar.gz` |
 | ARM64 Linux | `aarch64-unknown-linux-gnu.tar.gz` |
 | x86-64 Linux | `x86_64-unknown-linux-gnu.tar.gz` |
+| ARM64 Windows | `aarch64-pc-windows-msvc.tar.gz` |
+| x86-64 Windows | `x86_64-pc-windows-msvc.tar.gz` |
 
 Each archive has an accompanying `.sha256` checksum file. After downloading
-the archive for your platform, unpack and install it somewhere on your `PATH`:
+the archive for your platform, unpack it and install the binary somewhere on
+your `PATH`.
+
+On macOS or Linux:
 
 ```sh
 tar -xzf boxpacker-v0.2.0-x86_64-unknown-linux-gnu.tar.gz
@@ -101,7 +106,15 @@ install -m 0755 boxpacker ~/.local/bin/boxpacker
 boxpacker --version
 ```
 
-Replace the example version and platform with the archive you downloaded.
+On Windows, extract the archive with File Explorer or PowerShell:
+
+```powershell
+tar -xzf .\boxpacker-v0.2.0-x86_64-pc-windows-msvc.tar.gz
+.\boxpacker.exe --version
+```
+
+Move `boxpacker.exe` to a directory on your `PATH`. Replace the example version
+and platform in these commands with the archive you downloaded.
 
 ### Add to a Nix configuration
 

@@ -88,10 +88,19 @@ jobs:
         include:
           - name: aarch64-apple-darwin
             runner: macos-15
+            binary: boxpacker
           - name: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm
+            binary: boxpacker
           - name: x86_64-unknown-linux-gnu
             runner: ubuntu-24.04
+            binary: boxpacker
+          - name: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+            binary: boxpacker.exe
+          - name: x86_64-pc-windows-msvc
+            runner: windows-2025
+            binary: boxpacker.exe
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Check out source
@@ -108,6 +117,7 @@ jobs:
 
       - name: Build and package binary
         env:
+          BINARY_NAME: ${{ matrix.binary }}
           RELEASE_TAG: ${{ github.ref_name }}
           TARGET_NAME: ${{ matrix.name }}
         shell: bash
@@ -116,7 +126,7 @@ jobs:
           cargo build --locked --release
 
           expected_version="boxpacker ${RELEASE_TAG#v}"
-          actual_version="$(target/release/boxpacker --version)"
+          actual_version="$("target/release/$BINARY_NAME" --version)"
           test "$actual_version" = "$expected_version" || {
             echo "binary reports '$actual_version'; expected '$expected_version'" >&2
             exit 1
@@ -124,7 +134,7 @@ jobs:
 
           archive="boxpacker-$RELEASE_TAG-$TARGET_NAME.tar.gz"
           mkdir -p dist
-          tar -C target/release -czf "dist/$archive" boxpacker
+          tar -C target/release -czf "dist/$archive" "$BINARY_NAME"
           if command -v sha256sum >/dev/null; then
             (cd dist && sha256sum "$archive" > "$archive.sha256")
           else
@@ -136,6 +146,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
         run: gh release upload "$RELEASE_TAG" dist/* --clobber
 
   publish:
