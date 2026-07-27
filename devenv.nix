@@ -1,9 +1,22 @@
-{ ... }:
+{ config, pkgs, ... }:
 
 {
+  packages = [
+    pkgs.cargo-edit
+    pkgs.jq
+  ];
+
   languages.rust = {
     enable = true;
     channel = "stable";
+  };
+
+  tasks."boxpacker:release" = {
+    description = "Validate, tag, and publish a BoxPacker release";
+    cwd = config.git.root;
+    exec = "bash ${./scripts/release.sh}";
+    input.version = "";
+    showOutput = true;
   };
 
   enterTest = ''
@@ -12,4 +25,3 @@
     cargo test --all-targets --all-features
   '';
 }
-

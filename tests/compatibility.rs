@@ -275,6 +275,18 @@ fn cli_defaults_preserve_legacy_paths_and_add_search_controls() {
 }
 
 #[test]
+fn cli_version_matches_the_cargo_package_version() {
+    let error =
+        Cli::try_parse_from(["boxpacker", "--version"]).expect_err("--version should exit early");
+
+    assert_eq!(error.kind(), clap::error::ErrorKind::DisplayVersion);
+    assert_eq!(
+        error.to_string(),
+        format!("boxpacker {}\n", env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
 fn cli_accepts_legacy_short_paths_and_explicit_search_controls() {
     let cli = Cli::try_parse_from([
         "boxpacker",

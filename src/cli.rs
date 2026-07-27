@@ -11,6 +11,7 @@ pub const DEFAULT_OUTPUT_PATH: &str = "output.json";
 #[derive(Clone, Debug, Eq, Parser, PartialEq)]
 #[command(
     name = "boxpacker",
+    version,
     about = "Packs rectangular items into rectangular containers"
 )]
 pub struct Cli {

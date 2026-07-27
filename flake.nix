@@ -6,6 +6,7 @@
   outputs =
     { self, nixpkgs }:
     let
+      cargoManifest = builtins.fromTOML (builtins.readFile ./Cargo.toml);
       supportedSystems = [
         "aarch64-darwin"
         "aarch64-linux"
@@ -22,7 +23,7 @@
         rec {
           boxpacker = pkgs.rustPlatform.buildRustPackage {
             pname = "boxpacker";
-            version = "0.1.0";
+            version = cargoManifest.package.version;
 
             src = pkgs.lib.fileset.toSource {
               root = ./.;

@@ -1,0 +1,153 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+jobs:
+  verify:
+    name: Verify release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt
+          rustup default stable
+
+      - name: Run project checks
+        run: |
+          cargo fmt --all --check
+          cargo clippy --locked --all-targets --all-features -- -D warnings
+          cargo test --locked --all-targets --all-features
+
+      - name: Verify binary version matches tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE_TAG" in
+            v*) expected_version="boxpacker ${RELEASE_TAG#v}" ;;
+            *) echo "release tag must start with v" >&2; exit 1 ;;
+          esac
+          cargo build --locked --release
+          actual_version="$(target/release/boxpacker --version)"
+          test "$actual_version" = "$expected_version" || {
+            echo "binary reports '$actual_version'; expected '$expected_version'" >&2
+            exit 1
+          }
+
+  create-draft:
+    name: Create draft release
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Create draft with generated notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            is_draft="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)"
+            test "$is_draft" = true || {
+              echo "release $RELEASE_TAG already exists and is not a draft" >&2
+              exit 1
+            }
+          else
+            gh release create "$RELEASE_TAG" --draft --generate-notes --verify-tag
+          fi
+
+  build:
+    name: Build / ${{ matrix.name }}
+    needs: create-draft
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: aarch64-apple-darwin
+            runner: macos-15
+          - name: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+          - name: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Build and package binary
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TARGET_NAME: ${{ matrix.name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --locked --release
+
+          expected_version="boxpacker ${RELEASE_TAG#v}"
+          actual_version="$(target/release/boxpacker --version)"
+          test "$actual_version" = "$expected_version" || {
+            echo "binary reports '$actual_version'; expected '$expected_version'" >&2
+            exit 1
+          }
+
+          archive="boxpacker-$RELEASE_TAG-$TARGET_NAME.tar.gz"
+          mkdir -p dist
+          tar -C target/release -czf "dist/$archive" boxpacker
+          if command -v sha256sum >/dev/null; then
+            (cd dist && sha256sum "$archive" > "$archive.sha256")
+          else
+            (cd dist && shasum -a 256 "$archive" > "$archive.sha256")
+          fi
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release upload "$RELEASE_TAG" dist/* --clobber
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Publish completed draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release edit "$RELEASE_TAG" --draft=false --latest
