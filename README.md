@@ -76,7 +76,14 @@ prints how many items were packed and writes two files:
 - `packing.html` — an interactive 3D view of the same result.
 
 Open `packing.html` in a web browser to explore the proposed layout. The report
-needs an internet connection to load its 3D viewer libraries.
+starts with one container in focus: choose another from the container list, use
+**Show All Containers** for a gallery of the full result, or switch the focused
+container to **Layer View** and build up its contents from bottom to top. Boxes
+for the current step retain their full dimensions while earlier boxes remain as
+faint context. Layer View can be orbited and includes a colored axis guide;
+**Reset Top View** restores the overhead orientation. The numbered contents
+list follows the suggested bottom-up placement order. The report needs an
+internet connection to load its 3D viewer libraries.
 
 ## Install or build
 

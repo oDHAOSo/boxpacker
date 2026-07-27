@@ -29,10 +29,28 @@ fn current_saved_output_renders_through_the_report_view_model() {
     assert!(html.contains("Logistics Overview"));
     assert!(html.contains("Container Vol"));
     assert!(html.contains("Unplaced Vol"));
+    assert!(html.contains("usedContainerVolume"));
+    assert!(html.contains("usedContainerUtilization"));
+    assert!(html.contains(r#""Utilization (of used)""#));
+    assert!(html.contains("`${globalUtilization}% (${usedContainerUtilization}%)`"));
     assert!(html.contains("THREE.BoxGeometry"));
     assert!(html.contains("function highlightItem(id)"));
     assert!(html.contains(r#"id="wireframe-toggle""#));
     assert!(html.contains("Toggle X-Ray View"));
+    assert!(html.contains(r#"id="show-all""#));
+    assert!(html.contains("Show All Containers"));
+    assert!(html.contains(r#"id="layer-view""#));
+    assert!(html.contains(r#"id="layer-slider""#));
+    assert!(html.contains(r#"id="reset-layer-camera""#));
+    assert!(html.contains("function selectContainer(containerIndex)"));
+    assert!(html.contains("function selectLayer(index)"));
+    assert!(html.contains("function placementOrder(container)"));
+    assert!(html.contains("left.item.coords.z - right.item.coords.z"));
+    assert!(html.contains("right.item.coords.y - left.item.coords.y"));
+    assert!(html.contains("new THREE.AxesHelper(axisLength)"));
+    assert!(html.contains("entry.mesh.material.opacity = startsNow ? 0.9 : 0.18;"));
+    assert!(!html.contains("clippingPlanes"));
+    assert!(!html.contains("applyLayerSlab"));
 }
 
 #[test]
